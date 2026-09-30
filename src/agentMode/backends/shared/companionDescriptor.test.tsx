@@ -24,6 +24,7 @@ jest.mock("./companionRuntime", () => ({
   configureCompanion: jest.fn(),
   verifyCompanion: jest.fn().mockResolvedValue("1.3.0"),
   resolveCompanionAdapter: jest.fn().mockResolvedValue("/plugin/companion.cjs"),
+  resolveCompanionNode: jest.fn().mockResolvedValue("/runtime/node.exe"),
   signInCompanion: jest.fn(),
   installCompanion: jest.fn(),
 }));
@@ -152,7 +153,7 @@ describe("companionDescriptor", () => {
           "antigravity"
         );
         expect(result).toMatchObject({
-          command: process.execPath,
+          command: "/runtime/node.exe",
           args: ["/plugin/companion.cjs"],
           cwd: "/vault",
           env: {

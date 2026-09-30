@@ -16,6 +16,23 @@ import {
 import { signInWithCli } from "@/agentMode/backends/shared/cliSignIn";
 import type { BackendSignInHandlers } from "@/agentMode/session/types";
 
+export async function resolveCompanionNode(env: NodeJS.ProcessEnv): Promise<string> {
+  const path = requireNodeModule<typeof import("node:path")>("path");
+  const command = env.COMPANION_NODE_PATH || (await detectBinary("node"));
+  if (!command || !/^node(?:\.exe)?$/i.test(path.basename(command)))
+    throw new Error(
+      "Companion adapters require Node.js 20 or later. Install Node.js and restart Obsidian, or set COMPANION_NODE_PATH in this backend's environment overrides."
+    );
+  const error = await validateExecutableFile(command);
+  if (error) throw new Error(error);
+  const version = await runCompanionCommand(command, ["-p", "process.versions.node"], env);
+  if (!/^\d+\.\d+\.\d+$/.test(version) || Number(version.split(".")[0]) < 20)
+    throw new Error(
+      "Companion adapters require Node.js 20 or later. Update Node.js and restart Obsidian."
+    );
+  return command;
+}
+
 export async function runCompanionCommand(
   command: string,
   args: readonly string[],

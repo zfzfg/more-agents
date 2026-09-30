@@ -24,6 +24,7 @@ import {
   configureCompanion,
   installCompanion,
   resolveCompanionAdapter,
+  resolveCompanionNode,
   signInCompanion,
   verifyCompanion,
 } from "@/agentMode/backends/shared/companionRuntime";
@@ -51,12 +52,13 @@ class CompanionBackend implements AcpBackend {
     const binaryPath = config.binaryPath;
     if (!binaryPath) throw new Error(`Configure ${this.displayName} first.`);
     await verifyCompanion(this.definition, binaryPath);
+    const environment = companionEnvironment(this.id, config);
     return {
-      command: process.execPath,
+      command: await resolveCompanionNode(environment),
       args: [await resolveCompanionAdapter(ctx.vaultBasePath, this.pluginDirectory, this.id)],
       cwd: ctx.vaultBasePath,
       env: {
-        ...companionEnvironment(this.id, config),
+        ...environment,
         ELECTRON_RUN_AS_NODE: "1",
         COMPANION_SYSTEM_PROMPT: buildAgentSystemPrompt(this.id),
         COMPANION_CLI_PATH: binaryPath,

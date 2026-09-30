@@ -4,7 +4,7 @@ This fork adds Grok, Muse Code and Antigravity (Gemini) to desktop Agent Mode. E
 
 ## Install the fork
 
-Extract **all** files from `obsidian-copilot-companions.zip` into your vault's `.obsidian/plugins/copilot` directory and restart Obsidian. Besides the usual plugin files, the release contains three `companion-*.cjs` adapters and license notices. Each adapter contains its runtime dependencies and uses Obsidian's Node runtime. No development checkout or `node_modules` are needed.
+Extract **all** files from `obsidian-copilot-companions.zip` into your vault's `.obsidian/plugins/copilot` directory and restart Obsidian. Besides the usual plugin files, the release contains three `companion-*.cjs` adapters and license notices. Each adapter contains its runtime dependencies and uses a separately installed Node.js runtime (version 20 or later). No development checkout or `node_modules` are needed. Install Node.js and restart Obsidian before starting these backends. A custom runtime can be selected with `COMPANION_NODE_PATH` in the backend environment overrides.
 
 Use the complete ZIP for plugin updates too. The upstream three-file installer does not include the adapter files. Missing adapters produce an actionable configuration error.
 

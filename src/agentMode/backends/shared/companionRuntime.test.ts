@@ -11,6 +11,7 @@ import {
   detectCompanion,
   installCompanion,
   resolveCompanionAdapter,
+  resolveCompanionNode,
   runCompanionCommand,
   signInCompanion,
   verifyCompanion,
@@ -71,6 +72,34 @@ describe("companionRuntime", () => {
         return { stdout: new PassThrough(), stderr: new PassThrough() };
       }
     );
+  });
+  describe("resolveCompanionNode()", () => {
+    it("selects a real Node executable rather than the Obsidian executable", async () => {
+      mockDetect.mockResolvedValue("C:/Program Files/nodejs/node.exe");
+      mockExec.mockImplementation((_command, _args, _options, callback) => {
+        callback(null, "24.19.0", "");
+        return {};
+      });
+      expect(await resolveCompanionNode({})).toBe("C:/Program Files/nodejs/node.exe");
+      expect(mockDetect).toHaveBeenCalledWith("node");
+    });
+    it("rejects Obsidian and missing Node with installation guidance", async () => {
+      mockDetect.mockResolvedValue("C:/Obsidian.exe");
+      await expect(resolveCompanionNode({})).rejects.toThrow("Install Node.js");
+      mockDetect.mockResolvedValue(null);
+      await expect(resolveCompanionNode({})).rejects.toThrow("Install Node.js");
+      expect(mockExec).not.toHaveBeenCalled();
+    });
+    it("validates an explicit runtime path and rejects an unsupported Node version", async () => {
+      mockExec.mockImplementation((_command, _args, _options, callback) => {
+        callback(null, "18.20.0", "");
+        return {};
+      });
+      await expect(resolveCompanionNode({ COMPANION_NODE_PATH: "/runtime/node" })).rejects.toThrow(
+        "Update Node.js"
+      );
+      expect(mockDetect).not.toHaveBeenCalled();
+    });
   });
   describe("runCompanionCommand()", () => {
     it("returns CLI output without interpreting paths or arguments as a shell program", async () => {
