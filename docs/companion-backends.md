@@ -23,6 +23,8 @@ Models come from backend catalogs. Effort selection is offered when supported. T
 
 ## Permissions and limitations
 
+Grok offers **Default** (Agent), **Plan**, and **Auto** (YOLO) in the chat mode selector. Default asks for native tool permissions. Auto approves ordinary tool requests automatically. Plan uses Grok's native planning instructions and, like All Your Companions, automatically approves ordinary tools; the implementation plan still requires a separate review. Plan is not a file-write or command sandbox. Reopen existing Grok chats after updating the adapter to refresh the mode selector.
+
 | Backend              | Permissions                                                                             | Planning                                          | Limitations                                                                                           |
 | -------------------- | --------------------------------------------------------------------------------------- | ------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
 | Grok                 | Native tool requests use Copilot dialogs                                                | Advertised native Plan mode; separate plan review | Requires Grok 0.2.117 or newer; known broken Windows stdio builds are rejected                        |

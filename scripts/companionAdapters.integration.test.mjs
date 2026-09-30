@@ -204,11 +204,68 @@ test("Grok translates native model switching, streams and cancels prompts", asyn
   }
 });
 
+test("Grok exposes Agent, Plan and client YOLO when the CLI omits its mode catalog", async () => {
+  const h = await harness("grok");
+  try {
+    await h.request("initialize", { protocolVersion: 1, clientCapabilities: {} });
+    const session = await h.request("session/new", { cwd: h.dir, mcpServers: [] });
+    assert.deepEqual(
+      session.modes.availableModes.map((mode) => mode.id),
+      ["default", "plan", "yolo"]
+    );
+    for (const modeId of ["yolo", "plan", "default"]) {
+      await h.request("session/set_mode", { sessionId: session.sessionId, modeId });
+      assert.equal(
+        h.frames
+          .filter((frame) => frame.params?.update?.sessionUpdate === "current_mode_update")
+          .at(-1).params.update.currentModeId,
+        modeId
+      );
+      if (modeId !== "default") {
+        assert.equal(
+          (
+            await h.request("session/prompt", {
+              sessionId: session.sessionId,
+              prompt: [{ type: "text", text: "tool" }],
+            })
+          ).stopReason,
+          "end_turn"
+        );
+        assert.equal(
+          h.frames.some((frame) => frame.id === "tool-review"),
+          false
+        );
+      }
+      const loaded = await h.request("session/load", {
+        sessionId: session.sessionId,
+        cwd: h.dir,
+        mcpServers: [],
+      });
+      assert.equal(loaded.modes.currentModeId, modeId);
+    }
+    const tool = h.request("session/prompt", {
+      sessionId: session.sessionId,
+      prompt: [{ type: "text", text: "tool" }],
+    });
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    assert(h.frames.some((frame) => frame.id === "tool-review"));
+    h.send({ id: "tool-review", result: { outcome: { outcome: "selected", optionId: "deny" } } });
+    assert.equal((await tool).stopReason, "cancelled");
+    await assert.rejects(
+      h.request("session/set_mode", { sessionId: session.sessionId, modeId: "unknown" }),
+      /Unknown/
+    );
+  } finally {
+    await h.close();
+  }
+});
+
 test("Grok rejects a plan without translating the rejection into approval", async () => {
   const h = await harness("grok");
   try {
     await h.request("initialize", { protocolVersion: 1, clientCapabilities: {} });
     const session = await h.request("session/new", { cwd: h.dir, mcpServers: [] });
+    await h.request("session/set_mode", { sessionId: session.sessionId, modeId: "plan" });
     const prompt = h.request("session/prompt", {
       sessionId: session.sessionId,
       prompt: [{ type: "text", text: "plan" }],

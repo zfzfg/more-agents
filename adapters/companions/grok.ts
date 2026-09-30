@@ -13,9 +13,22 @@ const child = spawnCli(executable, ["agent", "stdio"], {
 });
 const catalogs = new Map<string, AgentCatalog>();
 const efforts = new Map<string, string>();
+const modes = new Map<string, string>();
+const availableModes = [
+  { id: "default", name: "Agent" },
+  { id: "plan", name: "Plan" },
+  { id: "yolo", name: "YOLO" },
+];
 const pending = new Map<
   string | number,
-  { hostId: string | number; method: string; sessionId?: string; modelId?: string; effort?: string }
+  {
+    hostId: string | number;
+    method: string;
+    sessionId?: string;
+    modelId?: string;
+    effort?: string;
+    modeId?: string;
+  }
 >();
 const plans = new Map<string, string | number>();
 let nextId = 0;
@@ -39,6 +52,26 @@ child.stdin.on("error", stop);
 createInterface({ input: process.stdin }).on("line", (line) => {
   try {
     const frame = JSON.parse(line) as CompanionWireFrame;
+    if (frame.method === "session/set_mode") {
+      const sessionId = frame.params?.sessionId;
+      const modeId = frame.params?.modeId;
+      if (
+        !sessionId ||
+        typeof modeId !== "string" ||
+        !availableModes.some((mode) => mode.id === modeId)
+      ) {
+        send({
+          jsonrpc: "2.0",
+          id: frame.id,
+          error: { code: -32602, message: "Unknown Grok mode" },
+        });
+        return;
+      }
+      pending.set(frame.id!, { hostId: frame.id!, method: frame.method, sessionId, modeId });
+      frame.params!.modeId = modeId === "yolo" ? "default" : modeId;
+      child.stdin.write(JSON.stringify(frame) + "\n");
+      return;
+    }
     if (!frame.method && plans.has(String(frame.id))) {
       const id = plans.get(String(frame.id));
       plans.delete(String(frame.id));
@@ -106,6 +139,39 @@ createInterface({ input: process.stdin }).on("line", (line) => {
 createInterface({ input: child.stdout }).on("line", (line) => {
   try {
     const frame = JSON.parse(line) as CompanionWireFrame;
+    if (frame.method === "session/request_permission" && frame.params) {
+      const mode = modes.get(frame.params.sessionId);
+      const toolCall = frame.params.toolCall as { kind?: string } | undefined;
+      const options = frame.params.options as Array<{ kind: string; optionId: string }> | undefined;
+      const allow = options?.find((option) => option.kind === "allow_once");
+      if ((mode === "yolo" || mode === "plan") && toolCall?.kind !== "switch_mode" && allow) {
+        child.stdin.write(
+          JSON.stringify({
+            jsonrpc: "2.0",
+            id: frame.id,
+            result: { outcome: { outcome: "selected", optionId: allow.optionId } },
+          }) + "\n"
+        );
+        return;
+      }
+    }
+    if (
+      ["x.ai/session/update", "_x.ai/session/update", "session/update"].includes(
+        frame.method ?? ""
+      ) &&
+      frame.params?.update?.sessionUpdate === "current_mode_update"
+    ) {
+      const { sessionId, update } = frame.params;
+      const switching = [...pending.values()].find(
+        (request) => request.method === "session/set_mode" && request.sessionId === sessionId
+      );
+      if (switching) return;
+      const native = String(update.currentModeId);
+      const modeId = native === "default" && modes.get(sessionId) === "yolo" ? "yolo" : native;
+      modes.set(sessionId, modeId);
+      frame.method = "session/update";
+      update.currentModeId = modeId;
+    }
     if (["x.ai/exit_plan_mode", "_x.ai/exit_plan_mode"].includes(frame.method ?? "")) {
       const id = `grok-plan:${++nextId}`;
       if (frame.id === undefined || !frame.params) throw new Error("Malformed Grok plan request");
@@ -128,6 +194,23 @@ createInterface({ input: child.stdout }).on("line", (line) => {
       frame.id = request.hostId;
       if (frame.result !== undefined) {
         const sessionId = frame.result.sessionId ?? request.sessionId;
+        if (sessionId && request.method === "session/set_mode") {
+          modes.set(sessionId, request.modeId!);
+          send({
+            jsonrpc: "2.0",
+            method: "session/update",
+            params: {
+              sessionId,
+              update: { sessionUpdate: "current_mode_update", currentModeId: request.modeId },
+            },
+          });
+        }
+        if (sessionId && ["session/new", "session/load", "session/fork"].includes(request.method)) {
+          const currentModeId =
+            frame.result.modes?.currentModeId ?? modes.get(sessionId) ?? "default";
+          modes.set(sessionId, currentModeId);
+          frame.result.modes = { currentModeId, availableModes };
+        }
         const models = frame.result.models ?? frame.result._meta?.models;
         if (sessionId && models?.availableModels) {
           const exact = models.availableModels.find(

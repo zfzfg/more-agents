@@ -125,13 +125,6 @@ createInterface({ input: process.stdin }).on("line", (line) => {
     return rpc(frame.id, {
       sessionId,
       models,
-      modes: {
-        currentModeId: "default",
-        availableModes: [
-          { id: "default", name: "Agent" },
-          { id: "plan", name: "Plan" },
-        ],
-      },
     });
   }
   if (frame.method === "session/load") return rpc(frame.id, { sessionId: p.sessionId, models });
@@ -139,7 +132,16 @@ createInterface({ input: process.stdin }).on("line", (line) => {
     return rpc(frame.id, {
       _meta: { model: p.modelId === "reject" ? { Err: "Model unavailable" } : { Ok: p.modelId } },
     });
-  if (frame.method === "session/set_mode") return rpc(frame.id, {});
+  if (frame.method === "session/set_mode") {
+    if (!["default", "plan"].includes(p.modeId))
+      return write({
+        jsonrpc: "2.0",
+        id: frame.id,
+        error: { code: -32602, message: "Unknown native mode" },
+      });
+    update(p.sessionId, { sessionUpdate: "current_mode_update", currentModeId: p.modeId });
+    return rpc(frame.id, {});
+  }
   if (frame.method === "session/list") return rpc(frame.id, { sessions: [] });
   if (frame.method === "session/prompt") {
     if (process.env.FAKE_INVALID_USAGE === "1")
@@ -148,6 +150,22 @@ createInterface({ input: process.stdin }).on("line", (line) => {
     promptId = frame.id;
     const text = p.prompt.map((item) => item.text ?? "").join("");
     if (text === "wait") return;
+    if (text === "tool") {
+      write({
+        jsonrpc: "2.0",
+        id: "tool-review",
+        method: "session/request_permission",
+        params: {
+          sessionId: p.sessionId,
+          toolCall: { toolCallId: "tool", title: "Edit note", kind: "edit", status: "pending" },
+          options: [
+            { optionId: "allow", kind: "allow_once", name: "Allow" },
+            { optionId: "deny", kind: "reject_once", name: "Deny" },
+          ],
+        },
+      });
+      return;
+    }
     if (text === "plan") {
       write({
         jsonrpc: "2.0",
@@ -167,5 +185,9 @@ createInterface({ input: process.stdin }).on("line", (line) => {
   if (!frame.method && frame.id === "review")
     return rpc(promptId, {
       stopReason: frame.result?.outcome === "approved" ? "end_turn" : "cancelled",
+    });
+  if (!frame.method && frame.id === "tool-review")
+    return rpc(promptId, {
+      stopReason: frame.result?.outcome?.optionId === "allow" ? "end_turn" : "cancelled",
     });
 });

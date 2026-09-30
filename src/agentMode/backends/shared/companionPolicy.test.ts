@@ -61,6 +61,11 @@ describe("companionPolicy", () => {
       expect(companionCompatibility("muse", "unknown", "darwin")).toMatch(/recognizable/));
   });
   describe("companionModeMapping()", () => {
+    it("maps the Grok adapter's Agent, Plan and YOLO modes to Default, Plan and Auto", () => {
+      expect(
+        companionModeMapping("grok", [{ id: "default" }, { id: "plan" }, { id: "yolo" }]).canonical
+      ).toEqual({ default: "default", plan: "plan", auto: "yolo" });
+    });
     it("never advertises Muse Plan mode even if a server claims it", () => {
       expect(
         companionModeMapping("muse", [{ id: "agent" }, { id: "yolo" }, { id: "plan" }]).canonical
