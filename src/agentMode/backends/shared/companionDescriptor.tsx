@@ -1,3 +1,5 @@
+import { resolveEffort } from "@/lib/model-effort";
+import { prefetchConfigEfforts } from "@/agentMode/backends/shared/prefetchConfigEfforts";
 import { buildAgentSystemPrompt } from "@/agentMode/backends/shared/agentSystemPrompt";
 import React from "react";
 import { Terminal } from "lucide-react";
@@ -248,11 +250,20 @@ export function createCompanionDescriptor(definition: CompanionDefinition): Back
       ...agentOriginEnabledModelEntries(settings, definition.id, wire.decode),
     ],
     getModeMapping: (modes) => companionModeMapping(definition.id, modes?.availableModes),
+    prefetchEffortCatalog: prefetchConfigEfforts,
     async applySelection(session, selection) {
-      await session.applyModelWireId(selection.baseModelId);
-      const apply = session.getState()?.model?.apply;
-      if (selection.effort !== null && apply?.kind === "setConfigOption" && apply.effortConfigId)
-        await session.setConfigOption(apply.effortConfigId, selection.effort);
+      if (session.getState()?.model?.current.baseModelId !== selection.baseModelId) {
+        await session.applyModelWireId(selection.baseModelId);
+      }
+      const model = session.getState()?.model;
+      const apply = model?.apply;
+      const effort = resolveEffort(
+        selection.effort,
+        model?.availableModels.find((entry) => entry.baseModelId === selection.baseModelId)
+          ?.effortOptions
+      );
+      if (effort !== null && apply?.kind === "setConfigOption" && apply.effortConfigId)
+        await session.setConfigOption(apply.effortConfigId, effort);
     },
     createBackendProcess(args): BackendProcess {
       return simpleBinaryBackendProcess(

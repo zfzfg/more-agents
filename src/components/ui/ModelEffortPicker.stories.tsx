@@ -47,6 +47,7 @@ export const NoEffortControl: StoryObj<Props> = {
       ...ConcreteEffort.args.override,
       effort: undefined,
       effortOptionsByModelKey: { "example|agent": [] },
+      effortStatusByModelKey: { "example|agent": "unsupported" },
     },
   },
 };
@@ -68,6 +69,23 @@ export const Unlicensed: StoryObj<Props> = {
         ...ConcreteEffort.args.override.models,
         { name: "local", displayName: "Local model", provider: "ollama", enabled: true },
       ],
+    },
+  },
+};
+
+export const LoadingEffort: StoryObj<Props> = {
+  args: {
+    override: {
+      ...NoEffortControl.args!.override!,
+      effortStatusByModelKey: { "example|agent": "loading" },
+    },
+  },
+};
+export const EffortDiscoveryFailed: StoryObj<Props> = {
+  args: {
+    override: {
+      ...NoEffortControl.args!.override!,
+      effortStatusByModelKey: { "example|agent": "error" },
     },
   },
 };

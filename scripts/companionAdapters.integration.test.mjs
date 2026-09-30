@@ -2,13 +2,22 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { createInterface } from "node:readline";
-import { mkdtemp, writeFile, rm, chmod } from "node:fs/promises";
+import { mkdtemp, writeFile, readFile, rm, chmod } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { build } from "esbuild";
 import { Readable, Writable } from "node:stream";
 import { client as createClient, ndJsonStream } from "@agentclientprotocol/sdk";
 import { copyFile } from "node:fs/promises";
+import * as schema from "../node_modules/@agentclientprotocol/sdk/dist/schema/zod.gen.js";
+const responseSchemas = {
+  initialize: schema.zInitializeResponse,
+  "session/new": schema.zNewSessionResponse,
+  "session/load": schema.zLoadSessionResponse,
+  "session/set_config_option": schema.zSetSessionConfigOptionResponse,
+  "session/prompt": schema.zPromptResponse,
+  "session/close": schema.zCloseSessionResponse,
+};
 
 const entries = { grok: "grok.ts", antigravity: "antigravity-main.ts", muse: "muse/main.mts" };
 async function harness(kind, options = {}) {
@@ -23,7 +32,8 @@ async function harness(kind, options = {}) {
   );
   await chmod(cli, 0o700);
   const adapter = join(dir, "adapter.cjs");
-  if (options.packaged) await copyFile(resolve(`companion-${kind}.cjs`), adapter);
+  if (options.packaged || process.env.COMPANION_PACKAGED_TEST === "1")
+    await copyFile(resolve(`companion-${kind}.cjs`), adapter);
   else
     await build({
       entryPoints: [`adapters/companions/${entries[kind]}`],
@@ -42,6 +52,9 @@ async function harness(kind, options = {}) {
     AGY_CWD: dir,
     GEMINI_HOME: join(dir, "gemini"),
     GROK_MUSE_POSTURE: JSON.stringify({ mode: "agent", shellSandbox: true }),
+    FAKE_AGY_MODELS: options.models,
+    FAKE_INVALID_USAGE: options.invalidUsage ? "1" : undefined,
+    FAKE_AGY_TRACE: join(dir, "agy-args.ndjson"),
   };
   const child = spawn(process.execPath, [adapter], {
     cwd: dir,
@@ -52,18 +65,36 @@ async function harness(kind, options = {}) {
     nextId = 0;
   const pending = new Map();
   const frames = [];
+  const protocolErrors = [];
   child.stderr.on("data", (chunk) => {
     errors += String(chunk);
   });
   createInterface({ input: child.stdout }).on("line", (line) => {
     const frame = JSON.parse(line);
     frames.push(frame);
+    const notificationSchema =
+      frame.method === "session/update"
+        ? schema.zSessionNotification
+        : frame.method === "session/request_permission"
+          ? schema.zRequestPermissionRequest
+          : undefined;
+    if (notificationSchema) {
+      const result = notificationSchema.safeParse(frame.params);
+      if (!result.success) protocolErrors.push(`${frame.method}: ${result.error.message}`);
+    }
     const call = !frame.method && pending.get(frame.id);
     if (call) {
       pending.delete(frame.id);
       clearTimeout(call.timer);
       if (frame.error) call.reject(new Error(`${frame.error.message}: ${errors}`));
-      else call.resolve(frame.result);
+      else {
+        const validator = responseSchemas[call.method];
+        const result = validator?.safeParse(frame.result);
+        if (result && !result.success) {
+          protocolErrors.push(`${call.method}: ${result.error.message}`);
+          call.reject(new Error(protocolErrors.at(-1)));
+        } else call.resolve(frame.result);
+      }
     }
   });
   child.on("exit", (code) => {
@@ -81,7 +112,7 @@ async function harness(kind, options = {}) {
         pending.delete(id);
         reject(new Error(`Timed out: ${method}: ${errors}`));
       }, 10000);
-      pending.set(id, { resolve, reject, timer });
+      pending.set(id, { resolve, reject, timer, method });
       send({ id, method, params });
     });
   const validated = [];
@@ -102,8 +133,22 @@ async function harness(kind, options = {}) {
     await exited;
     clearTimeout(timer);
     await rm(dir, { recursive: true, force: true });
+    assert.deepEqual(protocolErrors, [], "All adapter frames must satisfy the ACP SDK schemas");
   };
-  return { dir, request, send, frames, validated, close };
+  return {
+    dir,
+    request,
+    send,
+    frames,
+    validated,
+    close,
+    async cliArgs() {
+      return (await readFile(join(dir, "agy-args.ndjson"), "utf8"))
+        .trim()
+        .split("\n")
+        .map((line) => JSON.parse(line));
+    },
+  };
 }
 
 test("Grok translates native model switching, streams and cancels prompts", async () => {
@@ -361,5 +406,103 @@ test("Antigravity validates model/effort choices and does not silently replace a
     );
   } finally {
     await h.close();
+  }
+});
+
+test("Antigravity advertises and executes only the selected dynamic model's effort levels, including after reload", async () => {
+  const h = await harness("antigravity", {
+    models:
+      "gemini-3.7-flash-low\tGemini 3.7 Flash (Low)\ngemini-3.7-flash-high\tGemini 3.7 Flash (High)\nplain\tPlain\n",
+  });
+  try {
+    await h.request("initialize", { protocolVersion: 1, clientCapabilities: {} });
+    const session = await h.request("session/new", { cwd: h.dir, mcpServers: [] });
+    const effort = session.configOptions.find((option) => option.id === "reasoning_effort");
+    assert.deepEqual(
+      effort.options.map((option) => option.value),
+      ["low", "high"]
+    );
+    assert.equal(effort.currentValue, "low");
+    await assert.rejects(
+      h.request("session/set_config_option", {
+        sessionId: session.sessionId,
+        configId: "reasoning_effort",
+        value: "medium",
+      }),
+      /Unsupported/
+    );
+    await h.request("session/set_config_option", {
+      sessionId: session.sessionId,
+      configId: "reasoning_effort",
+      value: "high",
+    });
+    await h.request("session/prompt", {
+      sessionId: session.sessionId,
+      prompt: [{ type: "text", text: "remember high effort" }],
+    });
+    await h.request("session/close", { sessionId: session.sessionId });
+    const loaded = await h.request("session/load", {
+      sessionId: session.sessionId,
+      cwd: h.dir,
+      mcpServers: [],
+    });
+    assert.equal(
+      loaded.configOptions.find((option) => option.id === "reasoning_effort").currentValue,
+      "high"
+    );
+    await h.request("session/prompt", {
+      sessionId: session.sessionId,
+      prompt: [{ type: "text", text: "after reload" }],
+    });
+    const invocations = (await h.cliArgs()).filter((args) => args.includes("--model"));
+    assert.equal(invocations.length, 2);
+    for (const args of invocations) {
+      assert.equal(args[args.indexOf("--model") + 1], "gemini-3.7-flash");
+      assert.equal(args[args.indexOf("--effort") + 1], "high");
+    }
+  } finally {
+    await h.close();
+  }
+});
+
+test("Antigravity keeps fixed-effort IDs and omits a separate CLI effort argument", async () => {
+  const h = await harness("antigravity", {
+    models: '[{"modelId":"gpt-oss-120b-medium","supportsReasoningEffort":false}]',
+  });
+  try {
+    await h.request("initialize", { protocolVersion: 1, clientCapabilities: {} });
+    const session = await h.request("session/new", { cwd: h.dir, mcpServers: [] });
+    assert(!session.configOptions.some((option) => option.id === "reasoning_effort"));
+    await h.request("session/prompt", {
+      sessionId: session.sessionId,
+      prompt: [{ type: "text", text: "hello" }],
+    });
+    const args = (await h.cliArgs()).find((args) => args.includes("--model"));
+    assert.equal(args[args.indexOf("--model") + 1], "gpt-oss-120b-medium");
+    assert(!args.includes("--effort"));
+    assert(
+      !h.frames.some(
+        (frame) =>
+          frame.params?.update?.sessionUpdate === "usage_update" &&
+          !Number.isFinite(frame.params.update.size)
+      )
+    );
+  } finally {
+    await h.close();
+  }
+});
+
+test("Protocol validation rejects malformed notifications even when the prompt succeeds", async () => {
+  const h = await harness("grok", { invalidUsage: true });
+  try {
+    await h.request("initialize", { protocolVersion: 1, clientCapabilities: {} });
+    const session = await h.request("session/new", { cwd: h.dir, mcpServers: [] });
+    const result = await h.request("session/prompt", {
+      sessionId: session.sessionId,
+      prompt: [{ type: "text", text: "hello" }],
+    });
+    assert.equal(result.stopReason, "end_turn");
+  } finally {
+    await assert.rejects(h.close(), /All adapter frames must satisfy the ACP SDK schemas/);
   }
 });

@@ -16,10 +16,6 @@ const MAX_DIFF_EXPAND_BYTES = 4 * 1024 * 1024;
 import { mergeDiffIntoContent, synthesizeEditDiff, type AcpDiffBlock } from "./diff-synthesize";
 import { antigravitySettingsPaths } from "./platform";
 import { grokCliNeedsShell, spawnCli } from "./platform";
-function modelRequiresEffort(modelId: string): boolean {
-  const known = DEFAULT_GEMINI_MODELS.find((m) => m.modelId === modelId);
-  return known ? known._meta.supportsReasoningEffort === true : false;
-}
 export const DEFAULT_AGY_EFFORT = "medium";
 function toolKind(name: string): string {
   switch (name) {
@@ -619,11 +615,28 @@ export class AgyAcpAdapterServer {
     }
     return this.supportsInputFormatStreamJson;
   }
+  getReasoningEfforts(modelId = this.currentModelId): string[] {
+    if (/(?:^|-)(low|medium|high)$/.test(modelId)) return [];
+    const override = this.effortRequirementOverrides.get(modelId);
+    if (override === false) return [];
+    const model =
+      this.discoveredModels?.find((entry) => entry.modelId === modelId) ??
+      DEFAULT_GEMINI_MODELS.find((entry) => entry.modelId === modelId);
+    if (override !== true && model?._meta.supportsReasoningEffort !== true) return [];
+    const levels =
+      model?._meta && "reasoningEfforts" in model._meta ? model._meta.reasoningEfforts : undefined;
+    return levels?.map((entry) => entry.value) ?? ["low", "medium", "high"];
+  }
   effectiveModelRequiresEffort(modelId: string): boolean {
-    if (this.effortRequirementOverrides.has(modelId)) {
-      return this.effortRequirementOverrides.get(modelId)!;
-    }
-    return modelRequiresEffort(modelId);
+    return this.getReasoningEfforts(modelId).length > 0;
+  }
+  private resolveCurrentEffort(): string {
+    const levels = this.getReasoningEfforts();
+    return levels.includes(this.currentEffort)
+      ? this.currentEffort
+      : levels.includes(DEFAULT_AGY_EFFORT)
+        ? DEFAULT_AGY_EFFORT
+        : (levels[0] ?? "");
   }
   getAvailableModels(): AgyModelEntry[] {
     const list: AgyModelEntry[] = this.discoveredModels
@@ -1067,20 +1080,21 @@ export class AgyAcpAdapterServer {
         currentValue: this.currentModelId,
         options: modelOptions,
       },
-      {
-        id: "reasoning_effort",
-        type: "select",
-        category: "thought_level",
-        name: "Reasoning effort",
-        currentValue: this.effectiveModelRequiresEffort(this.currentModelId)
-          ? this.currentEffort || DEFAULT_AGY_EFFORT
-          : "default",
-        options: [
-          { value: "low", name: "Low" },
-          { value: "medium", name: "Medium" },
-          { value: "high", name: "High" },
-        ],
-      },
+      ...(this.effectiveModelRequiresEffort(this.currentModelId)
+        ? [
+            {
+              id: "reasoning_effort",
+              type: "select",
+              category: "thought_level",
+              name: "Reasoning effort",
+              currentValue: this.resolveCurrentEffort(),
+              options: this.getReasoningEfforts().map((value) => ({
+                value,
+                name: value.charAt(0).toUpperCase() + value.slice(1),
+              })),
+            },
+          ]
+        : []),
       {
         id: "mode",
         type: "select",
@@ -1255,6 +1269,7 @@ export class AgyAcpAdapterServer {
         ) {
           this.currentModelId = saved.modelId;
           this.currentEffort = saved.effort || "";
+          this.currentEffort = this.resolveCurrentEffort();
           this.currentModeId = saved.modeId === "plan" ? "plan" : "agent";
         }
         this.activeConversationId = this.lookupConversation(loadedSessionId);
@@ -1286,6 +1301,7 @@ export class AgyAcpAdapterServer {
         if (configId === "model" && typeof value === "string") {
           const prevModel = this.currentModelId;
           this.currentModelId = value;
+          this.currentEffort = this.resolveCurrentEffort();
           if (prevModel !== value && this.agyProc) {
             this.requestRespawn();
           }
@@ -1643,11 +1659,8 @@ export class AgyAcpAdapterServer {
       args.push("--model", this.currentModelId);
     }
     if (this.effectiveModelRequiresEffort(this.currentModelId)) {
-      const chosen =
-        this.currentEffort && this.currentEffort !== "default"
-          ? this.currentEffort
-          : DEFAULT_AGY_EFFORT;
-      args.push("--effort", chosen);
+      this.currentEffort = this.resolveCurrentEffort();
+      args.push("--effort", this.currentEffort);
     }
     if (this.currentModeId === "plan") {
       args.push("--mode", "plan");
@@ -1842,14 +1855,12 @@ export class AgyAcpAdapterServer {
         const usedTokens = u.total_tokens ?? (u.input_tokens ?? 0) + (u.output_tokens ?? 0);
         if (typeof usedTokens === "number" && usedTokens > 0) {
           const windowSize = this.modelContextWindow(this.currentModelId);
-          this.sendNotification("session/update", {
-            sessionId: this.sessionId,
-            update: {
-              sessionUpdate: "usage_update",
-              used: usedTokens,
-              size: windowSize,
-            },
-          });
+          if (windowSize !== undefined && Number.isFinite(windowSize) && windowSize > 0) {
+            this.sendNotification("session/update", {
+              sessionId: this.sessionId,
+              update: { sessionUpdate: "usage_update", used: usedTokens, size: windowSize },
+            });
+          }
         }
       }
       return;
@@ -1875,14 +1886,12 @@ export class AgyAcpAdapterServer {
               (res.usage.input_tokens ?? 0) + (res.usage.output_tokens ?? 0);
             if (typeof usedTokens === "number" && usedTokens > 0) {
               const windowSize = this.modelContextWindow(this.currentModelId);
-              this.sendNotification("session/update", {
-                sessionId: this.sessionId,
-                update: {
-                  sessionUpdate: "usage_update",
-                  used: usedTokens,
-                  size: windowSize,
-                },
-              });
+              if (windowSize !== undefined && Number.isFinite(windowSize) && windowSize > 0) {
+                this.sendNotification("session/update", {
+                  sessionId: this.sessionId,
+                  update: { sessionUpdate: "usage_update", used: usedTokens, size: windowSize },
+                });
+              }
             }
           }
           if (res?.status === "ERROR") {

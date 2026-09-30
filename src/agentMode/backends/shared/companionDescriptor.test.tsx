@@ -108,7 +108,13 @@ describe("companionDescriptor", () => {
         const session = {
           applyModelWireId: jest.fn().mockResolvedValue(undefined),
           getState: () => ({
-            model: { apply: { kind: "setConfigOption", effortConfigId: "reasoning_effort" } },
+            model: {
+              current: { baseModelId: "previous", effort: null },
+              availableModels: [
+                { baseModelId: "gemini", effortOptions: [{ value: "high", label: "high" }] },
+              ],
+              apply: { kind: "setConfigOption", effortConfigId: "reasoning_effort" },
+            },
           }),
           setConfigOption: jest.fn().mockResolvedValue(undefined),
         } as unknown as Parameters<BackendDescriptor["applySelection"]>[0];
@@ -119,6 +125,57 @@ describe("companionDescriptor", () => {
         );
         expect(session.applyModelWireId).toHaveBeenCalledWith("gemini");
         expect(session.setConfigOption).toHaveBeenCalledWith("reasoning_effort", "high");
+      });
+    });
+    describe("model-specific effort selection", () => {
+      it.each([null, "invalid", "high"])(
+        "resolves saved effort %p against the new model",
+        async (effort) => {
+          const session = {
+            applyModelWireId: jest.fn().mockResolvedValue(undefined),
+            getState: () => ({
+              model: {
+                current: { baseModelId: "gemini", effort: "high" },
+                availableModels: [
+                  {
+                    baseModelId: "gemini",
+                    effortOptions: [
+                      { value: "low", label: "low" },
+                      { value: "high", label: "high" },
+                    ],
+                  },
+                ],
+                apply: {
+                  kind: "setConfigOption",
+                  configId: "model",
+                  effortConfigId: "reasoning_effort",
+                },
+              },
+            }),
+            setConfigOption: jest.fn().mockResolvedValue(undefined),
+          } as unknown as Parameters<BackendDescriptor["applySelection"]>[0];
+          await create().applySelection(session, { baseModelId: "gemini", effort });
+          expect(session.applyModelWireId).not.toHaveBeenCalled();
+          expect(session.setConfigOption).toHaveBeenCalledWith(
+            "reasoning_effort",
+            effort === "high" ? "high" : "low"
+          );
+        }
+      );
+      it("does not send effort for a model without offered levels", async () => {
+        const session = {
+          applyModelWireId: jest.fn().mockResolvedValue(undefined),
+          getState: () => ({
+            model: {
+              current: { baseModelId: "plain", effort: null },
+              availableModels: [{ baseModelId: "plain", effortOptions: [] }],
+              apply: { kind: "setConfigOption", configId: "model" },
+            },
+          }),
+          setConfigOption: jest.fn(),
+        } as unknown as Parameters<BackendDescriptor["applySelection"]>[0];
+        await create().applySelection(session, { baseModelId: "plain", effort: "high" });
+        expect(session.setConfigOption).not.toHaveBeenCalled();
       });
     });
     describe("onPluginLoad()", () => {

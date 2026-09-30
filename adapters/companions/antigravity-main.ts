@@ -43,13 +43,6 @@ function makeServer(): AgyAcpAdapterServer {
                 { id: "plan", name: "Plan" },
               ],
             };
-            const model = server
-              .getAvailableModels()
-              .find((model) => model.modelId === server.currentModelId);
-            if (!model?._meta.supportsReasoningEffort)
-              frame.result.configOptions = frame.result.configOptions.filter(
-                (option: { id: string }) => option.id !== "reasoning_effort"
-              );
           }
           if (frame.params?.update?.sessionUpdate === "plan") continue;
           send(frame);
@@ -107,15 +100,8 @@ input.on("line", (line) => {
       }
       if (frame.method === "session/set_config_option") {
         const p = frame.params;
-        const model = server
-          .getAvailableModels()
-          .find((model) => model.modelId === server.currentModelId);
         const option = server.getConfigOptions().find((option) => option.id === p?.configId);
-        if (
-          !option ||
-          !option.options.some((value) => value.value === p?.value) ||
-          (p?.configId === "reasoning_effort" && !model?._meta.supportsReasoningEffort)
-        )
+        if (!option || !option.options.some((value) => value.value === p?.value))
           throw new Error("Unsupported Antigravity configuration");
       }
       if (
@@ -125,14 +111,7 @@ input.on("line", (line) => {
         throw new Error("Unsupported Antigravity mode");
       await server.handleClientLine(line);
       if (frame.method === "session/set_config_option") {
-        const model = server
-          .getAvailableModels()
-          .find((model) => model.modelId === server.currentModelId);
-        const configOptions = server
-          .getConfigOptions()
-          .filter(
-            (option) => option.id !== "reasoning_effort" || model?._meta.supportsReasoningEffort
-          );
+        const configOptions = server.getConfigOptions();
         send({
           method: "session/update",
           params: {

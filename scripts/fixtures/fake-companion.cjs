@@ -2,6 +2,8 @@ const { createInterface } = require("node:readline");
 const { randomUUID } = require("node:crypto");
 const kind = process.env.FAKE_COMPANION;
 const args = process.argv.slice(2);
+if (kind === "antigravity" && process.env.FAKE_AGY_TRACE)
+  require("node:fs").appendFileSync(process.env.FAKE_AGY_TRACE, JSON.stringify(args) + "\n");
 const write = (frame) => process.stdout.write(JSON.stringify(frame) + "\n");
 if (args.includes("--version")) {
   process.stdout.write("1.3.0\n");
@@ -13,7 +15,8 @@ if (args.includes("--help")) {
 }
 if (args.includes("models")) {
   process.stdout.write(
-    "fixture-medium\tFixture Medium\nfixture-high\tFixture High\nplain\tPlain\n"
+    process.env.FAKE_AGY_MODELS ??
+      "fixture-medium\tFixture Medium\nfixture-high\tFixture High\nplain\tPlain\n"
   );
   process.exit(0);
 }
@@ -139,6 +142,9 @@ createInterface({ input: process.stdin }).on("line", (line) => {
   if (frame.method === "session/set_mode") return rpc(frame.id, {});
   if (frame.method === "session/list") return rpc(frame.id, { sessions: [] });
   if (frame.method === "session/prompt") {
+    if (process.env.FAKE_INVALID_USAGE === "1")
+      update(p.sessionId, { sessionUpdate: "usage_update", used: 7 });
+
     promptId = frame.id;
     const text = p.prompt.map((item) => item.text ?? "").join("");
     if (text === "wait") return;

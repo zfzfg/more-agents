@@ -78,7 +78,7 @@ export interface AgyModelEntry {
   name: string;
   description?: string;
   _meta: {
-    supportsReasoningEffort: boolean;
+    supportsReasoningEffort?: boolean;
     reasoningEfforts?: Array<{
       value: string;
     }>;
@@ -108,6 +108,33 @@ export function parseAgyModelsOutput(output: string): {
           const row = value as Record<string, unknown>;
           const modelId = row.modelId ?? row.id;
           if (typeof modelId !== "string" || !modelId || row.hidden === true) return [];
+          const meta = row._meta as Record<string, unknown> | undefined;
+          const known = DEFAULT_GEMINI_MODELS.find((model) => model.modelId === modelId)?._meta;
+          const rawEfforts = row.reasoningEfforts ?? meta?.reasoningEfforts;
+          const reasoningEfforts = Array.isArray(rawEfforts)
+            ? [
+                ...new Set(
+                  rawEfforts.flatMap((entry: unknown) => {
+                    const value =
+                      typeof entry === "string"
+                        ? entry
+                        : entry && typeof entry === "object" && "value" in entry
+                          ? entry.value
+                          : undefined;
+                    return typeof value === "string" && value.length ? [value] : [];
+                  })
+                ),
+              ].map((value) => ({ value }))
+            : known && "reasoningEfforts" in known
+              ? known.reasoningEfforts
+              : undefined;
+          const declaredSupport = row.supportsReasoningEffort ?? meta?.supportsReasoningEffort;
+          const supportsReasoningEffort =
+            typeof declaredSupport === "boolean"
+              ? declaredSupport
+              : Array.isArray(rawEfforts)
+                ? reasoningEfforts!.length > 0
+                : known?.supportsReasoningEffort;
           const size = contextTokens(
             row.context_window ??
               row.contextLimit ??
@@ -124,7 +151,8 @@ export function parseAgyModelsOutput(output: string): {
                     ? row.displayName
                     : modelId,
               _meta: {
-                supportsReasoningEffort: row.supportsReasoningEffort === true,
+                supportsReasoningEffort,
+                reasoningEfforts,
                 totalContextTokens: input ?? size,
                 contextQuality: size || input ? "verified" : "unknown",
                 contextLimits: {
@@ -163,7 +191,10 @@ export function parseAgyModelsOutput(output: string): {
     if (!modelId) continue;
     const displayName = parts[1]?.trim() || modelId;
     rawModels.push({ modelId, name: displayName });
-    const match = /^(.*)-(high|medium|low)$/.exec(modelId);
+    const fixed =
+      DEFAULT_GEMINI_MODELS.find((model) => model.modelId === modelId)?._meta
+        .supportsReasoningEffort === false;
+    const match = fixed ? null : /^(.*)-(high|medium|low)$/.exec(modelId);
     if (match) {
       const baseId = match[1];
       const effort = match[2];
@@ -177,7 +208,8 @@ export function parseAgyModelsOutput(output: string): {
         group.efforts.push(effort);
       }
     } else {
-      grouped.set(modelId, { baseName: displayName, efforts: [] });
+      const existing = grouped.get(modelId);
+      grouped.set(modelId, { baseName: displayName, efforts: existing?.efforts ?? [] });
     }
   }
   const availableModels: AgyModelEntry[] = [];
@@ -186,14 +218,20 @@ export function parseAgyModelsOutput(output: string): {
     const orderedEfforts = effortOrder
       .filter((e) => info.efforts.includes(e))
       .map((value) => ({ value }));
+    const known = DEFAULT_GEMINI_MODELS.find((model) => model.modelId === baseId)?._meta;
     availableModels.push({
       modelId: baseId,
       name: info.baseName,
       _meta: {
-        supportsReasoningEffort: orderedEfforts.length > 0,
+        supportsReasoningEffort:
+          orderedEfforts.length > 0 || known?.supportsReasoningEffort === true,
         totalContextTokens: contextWindowForModel(baseId),
         contextQuality: "estimated",
-        ...(orderedEfforts.length > 0 ? { reasoningEfforts: orderedEfforts } : {}),
+        ...(orderedEfforts.length > 0
+          ? { reasoningEfforts: orderedEfforts }
+          : known && "reasoningEfforts" in known
+            ? { reasoningEfforts: known.reasoningEfforts }
+            : {}),
       },
     });
   }

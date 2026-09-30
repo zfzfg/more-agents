@@ -105,7 +105,10 @@ jest.mock("@/settings/model", () => ({
   settingsStore: { get: jest.fn(() => ({})), set: jest.fn() },
 }));
 
-function emitSettingsChange(prev: { agentMode: unknown }, next: { agentMode: unknown }): void {
+function emitSettingsChange(
+  prev: { agentMode: unknown; backends?: unknown },
+  next: { agentMode: unknown; backends?: unknown }
+): void {
   for (const cb of settingsChangeCallbacks) cb(prev, next);
 }
 
@@ -3151,6 +3154,8 @@ describe("AgentSessionManager.onInstallStateChanged", () => {
   function buildInstallStateManager(opts: {
     installState: InstallState;
     refreshResult?: Promise<void> | null;
+    prefetch?: boolean;
+    backendId?: BackendId;
   }) {
     let installState = opts.installState;
     const preloader = {
@@ -3166,6 +3171,8 @@ describe("AgentSessionManager.onInstallStateChanged", () => {
     const descriptor = {
       ...buildDescriptor(),
       getInstallState: jest.fn(() => installState),
+      prefetchEffortCatalog: opts.prefetch ? jest.fn() : undefined,
+      id: opts.backendId ?? "opencode",
     } as unknown as BackendDescriptor;
     const mgr = new AgentSessionManager(
       buildApp(),
@@ -3181,6 +3188,44 @@ describe("AgentSessionManager.onInstallStateChanged", () => {
     return { mgr, preloader, setInstallState: (state: InstallState) => (installState = state) };
   }
 
+  it("re-probes a model enabled after initial discovery, including while a probe is pending", async () => {
+    const { mgr, preloader } = buildInstallStateManager({
+      installState: { kind: "ready", source: "custom" },
+      prefetch: true,
+      backendId: "codex",
+      refreshResult: Promise.resolve(),
+    });
+    const previous = { agentMode: {}, backends: { codex: { enabledModels: [] } } };
+    const next = { agentMode: {}, backends: { codex: { enabledModels: ["gpt-6.1-sol"] } } };
+    emitSettingsChange(previous, next);
+    expect(preloader.refresh).toHaveBeenCalledTimes(1);
+    emitSettingsChange(next, {
+      ...next,
+      backends: { codex: { enabledModels: ["gpt-6.1-sol", "gemini-3.7-flash"] } },
+    });
+    expect(preloader.refresh).toHaveBeenCalledTimes(2);
+    expect(mgr.getPreloadStatus("codex")).toBe("pending");
+  });
+  it("refreshes effort discovery in a separate probe without closing live chats", async () => {
+    const { mgr, preloader } = buildInstallStateManager({
+      installState: { kind: "ready", source: "custom" },
+      refreshResult: Promise.resolve(),
+    });
+    await mgr.createSession();
+    mockBackendShutdown.mockClear();
+    mgr.refreshEffortCatalog("opencode");
+    expect(preloader.refresh).toHaveBeenCalledWith("opencode");
+    expect(mockBackendShutdown).not.toHaveBeenCalled();
+    expect(mgr.getPreloadStatus("opencode")).toBe("pending");
+    await Promise.resolve();
+    expect(mgr.getPreloadStatus("opencode")).toBe("ready");
+  });
+  it("does not start an effort probe for an unavailable backend", () => {
+    const { mgr, preloader } = buildInstallStateManager({ installState: { kind: "absent" } });
+    mgr.refreshEffortCatalog("opencode");
+    expect(preloader.refresh).not.toHaveBeenCalled();
+    expect(preloader.preload).not.toHaveBeenCalled();
+  });
   it("preloads a freshly-installed backend that was never probed", async () => {
     const { mgr, preloader } = buildInstallStateManager({
       installState: { kind: "ready", source: "custom" },

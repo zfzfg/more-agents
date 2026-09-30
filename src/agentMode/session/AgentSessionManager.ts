@@ -289,6 +289,21 @@ export class AgentSessionManager {
   }
 
   private onDefaultSelectionsChanged(prev: CopilotSettings, next: CopilotSettings): void {
+    const backendIds = new Set([
+      ...Object.keys(prev.backends ?? {}),
+      ...Object.keys(next.backends ?? {}),
+    ]);
+    for (const id of backendIds) {
+      const backendId = id;
+      const descriptor = this.opts.resolveDescriptor(backendId);
+      if (
+        descriptor?.prefetchEffortCatalog &&
+        JSON.stringify(prev.backends?.[id as keyof CopilotSettings["backends"]]?.enabledModels) !==
+          JSON.stringify(next.backends?.[id as keyof CopilotSettings["backends"]]?.enabledModels)
+      ) {
+        this.refreshEffortCatalog(backendId);
+      }
+    }
     const prevBackends = prev.agentMode?.backends as
       | Record<string, { defaultModel?: ModelSelection | null } | undefined>
       | undefined;
@@ -1672,6 +1687,14 @@ export class AgentSessionManager {
           .join("|")
       : "";
     return `${status}#${catalog}#${effortSig}`;
+  }
+
+  refreshEffortCatalog(backendId: BackendId): void {
+    if (this.disposed || !this.isBackendInstalled(backendId)) return;
+    this.registerPreload(
+      backendId,
+      this.preloader.refresh(backendId) ?? this.preloader.preload(backendId)
+    );
   }
 
   preloadModels(backendId: BackendId): Promise<void> {
