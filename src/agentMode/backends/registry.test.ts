@@ -51,11 +51,14 @@ describe("backendRegistry", () => {
   });
 
   describe("backendDisplayOrder()", () => {
-    it("lists opencode, then Claude, then Codex", () => {
+    it("preserves existing order and appends Grok, Antigravity and Muse", () => {
       expect(backendDisplayOrder()).toEqual([
         OpencodeBackendDescriptor,
         ClaudeBackendDescriptor,
         CodexBackendDescriptor,
+        backendRegistry.grok,
+        backendRegistry.antigravity,
+        backendRegistry.muse,
       ]);
     });
 

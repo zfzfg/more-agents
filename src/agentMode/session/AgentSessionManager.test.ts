@@ -1629,6 +1629,37 @@ describe("AgentSessionManager.setActiveSession", () => {
 });
 
 describe("AgentSessionManager.restartBackend", () => {
+  it("performs installer maintenance only after shutting down the backend", async () => {
+    const mgr = buildManager();
+    await mgr.createSession();
+    await mgr.restartBackend("opencode", "CLI update", {
+      deferWhileBusy: false,
+      maintenance: async () => {
+        expect(mockBackendShutdown).toHaveBeenCalledTimes(1);
+      },
+    });
+    expect(mgr.getSessions()).toHaveLength(1);
+  });
+  it("restores sessions and reports an installer failure", async () => {
+    const mgr = buildManager();
+    await mgr.createSession();
+    await expect(
+      mgr.restartBackend("opencode", "CLI update", {
+        deferWhileBusy: false,
+        maintenance: async () => {
+          throw new Error("Download failed");
+        },
+      })
+    ).rejects.toThrow("Download failed");
+    expect(mgr.getSessions()).toHaveLength(1);
+  });
+  it("runs maintenance when no process has started", async () => {
+    const mgr = buildManager();
+    const maintenance = jest.fn(async () => undefined);
+    await mgr.restartBackend("opencode", "CLI install", { deferWhileBusy: false, maintenance });
+    expect(maintenance).toHaveBeenCalledTimes(1);
+  });
+
   it("returns false when the backend has not been started", async () => {
     const mgr = buildManager();
 

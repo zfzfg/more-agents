@@ -192,6 +192,10 @@ jobs:
       #
       # Runs AFTER the prerelease manifest swap so the attested manifest.json
       # exactly matches the file uploaded to the GitHub Release.
+      - name: Package companion adapters
+        if: steps.check_existing.outputs.exists != 'true'
+        run: npm run package:companions
+
       - name: Generate artifact attestation
         if: steps.check_existing.outputs.exists != 'true'
         uses: actions/attest-build-provenance@v2
@@ -200,6 +204,13 @@ jobs:
             main.js
             manifest.json
             styles.css
+            companion-grok.cjs
+            companion-antigravity.cjs
+            companion-muse.cjs
+            COMPANION-LICENSE
+            MUSE-SDK-LICENSE
+            COMPANION-PROVENANCE.md
+            .cache/releases/obsidian-copilot-companions.zip
 
       # ── Step 11: Create GitHub Release ───────────────────────────────────────
       # --target pins the tag to the exact merge commit SHA so concurrent
@@ -225,4 +236,11 @@ jobs:
             $PRERELEASE_FLAG \
             main.js \
             manifest.json \
-            styles.css
+            styles.css \
+            companion-grok.cjs \
+            companion-antigravity.cjs \
+            companion-muse.cjs \
+            COMPANION-LICENSE \
+            MUSE-SDK-LICENSE \
+            COMPANION-PROVENANCE.md \
+            .cache/releases/obsidian-copilot-companions.zip

@@ -1,0 +1,48 @@
+# Companion backends
+
+This fork adds Grok, Muse Code and Antigravity (Gemini) to desktop Agent Mode. Existing defaults and provider settings stay unchanged. Copilot continues to load on mobile; local CLI agents require desktop Obsidian.
+
+## Install the fork
+
+Extract **all** files from `obsidian-copilot-companions.zip` into your vault's `.obsidian/plugins/copilot` directory and restart Obsidian. Besides the usual plugin files, the release contains three `companion-*.cjs` adapters and license notices. Each adapter contains its runtime dependencies and uses Obsidian's Node runtime. No development checkout or `node_modules` are needed.
+
+Use the complete ZIP for plugin updates too. The upstream three-file installer does not include the adapter files. Missing adapters produce an actionable configuration error.
+
+## Configure and sign in
+
+Open **Basic / Agents**, choose a backend, then **Configure**.
+
+- **Install / update** runs the fixed official vendor installer after confirmation, using its normal installation for your user account. Output and failures are displayed. Updates are manual and stop the selected backend's running Copilot sessions first.
+- **Re-check** detects a CLI or verifies the configured executable and version.
+- **CLI path / Save path** selects an existing CLI, including Windows paths with spaces.
+- **Sign in** runs `grok login` or `muse login`. Use **Sign in in terminal** when terminal input is needed. Antigravity opens an interactive `agy` terminal directly.
+
+Credentials remain with the CLI. Credential-file presence never proves successful authentication. Login completion is reported as unverified until a successful agent response checks access. CLI paths, versions and environment overrides follow device profiles; model and mode preferences may sync.
+
+Models come from backend catalogs. Effort selection is offered when supported. The existing Copilot instruction builder supplies a tagged session-prompt block where a native system-prompt override is unavailable. The fork does not edit global CLI rule files, and removes the internal prefix during history replay.
+
+## Permissions and limitations
+
+| Backend              | Permissions                                                                             | Planning                                          | Limitations                                                                                           |
+| -------------------- | --------------------------------------------------------------------------------------- | ------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| Grok                 | Native tool requests use Copilot dialogs                                                | Advertised native Plan mode; separate plan review | Requires Grok 0.2.117 or newer; known broken Windows stdio builds are rejected                        |
+| Antigravity (Gemini) | Automatic tools require explicit consent for this vault                                 | Native Plan mode and separate plan review         | Copilot cannot ask before each tool or enforce its Vault file-service boundaries on native CLI access |
+| Muse Code            | Prompt-unmatched approvals and shell sandbox by default; automatic approval is explicit | No Plan mode                                      | Text only; unsupported images and client MCP servers fail explicitly                                  |
+
+Antigravity's automatic-tool notice stays visible in Agent Mode. Disabling automatic tools revokes consent and stops running sessions immediately. Plan approval remains separate from tool execution.
+
+## Saved chats and updates
+
+Saved chats retain backend and native session IDs. Resume follows the backend's advertised capabilities. On failed resume, saved history stays available and a new conversation requires an explicit user action.
+
+Installer errors are shown; Copilot attempts to restore prior sessions if the old CLI remains usable. After updates, path, version and ACP startup are checked again. Interrupted turns may need a new prompt.
+
+## Build and validation
+
+Use `npm ci`, `npm run build`, `npm run test:companions`, `npm test`, `npm run format:check`, `npm run lint`, `npm run review:obsidian`, and `node scripts/mobile-load-smoke.cjs`. After a production build, `npm run package:companions` creates the release ZIP. The release workflow uploads adapters and notices as well as the complete ZIP.
+
+Fake-CLI tests cover ACP schema validation, Windows launcher paths with spaces, independent chats, streaming, model/effort validation, cancellation, plan rejection, unsupported inputs and resume. Installer and device-profile tests cover failures and persistence. Live authentication and note-read/edit/cancel/resume tests in a separate vault remain necessary on **each** of Windows, macOS and Linux before release.
+
+## Source and license
+
+The Antigravity and Muse implementations derive from All Your Companions commit `91d216aaa8c680811034abd44e4be9eb8cee178e`. The release includes `COMPANION-PROVENANCE.md` and `COMPANION-LICENSE`. Source adapters use FSL-1.1-MIT; Copilot uses AGPL-3.0. Notices are preserved. Review the applicable FSL terms and permissions before publishing; this implementation does not establish license compatibility.
