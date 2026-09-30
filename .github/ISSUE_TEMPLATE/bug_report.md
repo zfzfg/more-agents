@@ -6,15 +6,16 @@ labels: ""
 assignees: ""
 ---
 
-- [ ] Disable all other plugins besides Copilot **(required)**
-- [ ] Diagnostics attached **(required)** — the easiest way is Settings → Copilot → Advanced → Debugging & support → **Report an issue**, which packs a screenshot and recent logs, uploads them privately, and opens a prefilled issue with the report ID already filled in (file that one instead of this form). Otherwise run the "Copilot: Create log file" command and attach the note it opens here.
+- [ ] Reproduce with other plugins disabled in a separate test vault, if possible.
+- [ ] Reviewed local diagnostics attached, if needed. Run **Copilot: Create log file** or use the Agent Mode activity log, and redact secrets and private content. The inherited **Report an issue** upload goes to Brevilabs and opens an upstream issue; More Agents maintainers cannot access it.
 - [ ] Screenshot of note + Copilot chat pane + dev console added **(optional)**
 
-Copilot version:
+More Agents commit:
+Plugin version (currently shown as Copilot):
+Operating system:
+Backend and CLI version:
+Node version (for Grok, Muse Code, or Antigravity):
 Model used:
-Report ID (from **Report an issue**, if you used it):
-
-(Bug reports missing the required items above will be closed)
 
 **Describe how to reproduce**
 A clear and concise description of what the bug is. Clear steps to reproduce the behavior

@@ -1,157 +1,72 @@
-<h1 align="center">Copilot for Obsidian</h1>
+# More Agents
 
-<p align="center"><strong>Agents for your Obsidian vault</strong></p>
+AI agents for your Obsidian vault, maintained by **Collin Lerche (zfzfg)**.
 
-<p align="center">Copilot V4 brings opencode, Claude Code, and Codex into Obsidian for research, writing, and knowledge work.</p>
+More Agents is an independent community fork of [Copilot for Obsidian](https://github.com/logancyang/obsidian-copilot), originally developed by Logan Yang and the Brevilabs team with contributors. It adds **Grok**, **Muse Code**, and **Antigravity (Gemini)** alongside **opencode**, **Claude Code**, and **Codex**, and retains Agent Chat, Projects, Skills, Commands, Quick Chat, Quick Ask, and Miyo integration.
 
-<p align="center">
-  <a href="https://obsidian.md/blog/2024-goty-winners/"><img src="./images/llm-integration.svg" width="640" alt="Best LLM Integration Award"></a>
-</p>
+[Getting started](docs/getting-started.md) · [Documentation](docs/index.md) · [Companion setup](docs/companion-backends.md) · [Contributing](CONTRIBUTING.md) · [Repository](https://github.com/zfzfg/more-agents)
 
-<p align="center">
-  <a href="https://obsidian.md/plugins?id=copilot"><strong>No. 1 Obsidian AI Plugin</strong></a>
-</p>
+## Current version and identity
 
-<p align="center">
-  <img src="https://img.shields.io/badge/dynamic/json?logo=obsidian&color=%23483699&label=downloads&query=%24%5B%22copilot%22%5D.downloads&url=https%3A%2F%2Fraw.githubusercontent.com%2Fobsidianmd%2Fobsidian-releases%2Fmaster%2Fcommunity-plugin-stats.json&style=flat-square" alt="Obsidian downloads" align="absmiddle">
-  <img src="https://img.shields.io/github/v/release/logancyang/obsidian-copilot?style=flat-square&sort=semver" alt="Latest release" align="absmiddle">
-</p>
+The current plugin manifest reports **4.0.12**, inherited from upstream. The repository and documentation use **More Agents**, but the running plugin still appears as **Copilot**, uses plugin ID `copilot`, and stores its plugin files under `.obsidian/plugins/copilot`. Commands such as **Open Copilot Agent Chat Window** keep their existing names. A technical rename and data migration are separate work.
 
-<p align="center">
-  <img src="./images/copilot-v4-agent-mode.png" alt="Copilot V4 agent organizing research into connected Obsidian notes" width="1200">
-</p>
+The original Copilot Community Plugins entry installs upstream, not this fork. Both currently use the same plugin ID and cannot be installed independently in the same vault. Use a separate test vault and back up an existing installation before replacing it. An upstream update can replace the fork and does not supply its companion adapters.
 
-<p align="center">
-  <a href="https://obsidian.md/plugins?id=copilot"><strong>Install in Obsidian</strong></a> ·
-  <a href="https://www.obsidiancopilot.com/en/pricing">View plans</a> ·
-  <a href="./docs/getting-started.md">Get started</a>
-</p>
+## Install the complete fork
 
----
+1. Enable community plugins in a separate desktop Obsidian vault and close Obsidian before copying plugin files.
+2. If a complete companion ZIP is available in [this fork's releases](https://github.com/zfzfg/more-agents/releases), extract **every file** into `.obsidian/plugins/copilot`. The current packaging command names it `obsidian-copilot-companions.zip`; the repository rename does not change that filename.
+3. Install **Node.js 20 or later** for Grok, Muse Code, and Antigravity, then restart Obsidian and enable **Copilot**. Managed opencode and Codex use separate installation paths and do not require this companion Node runtime.
+4. Open **Settings → Copilot → Basic → Agents**, choose a backend, and select **Configure**.
+5. Start **Agent Chat** from the ribbon or **Open Copilot Agent Chat Window** from the command palette.
 
-## Choose your agent
+If no complete release is available, build and package the companion ZIP using [CONTRIBUTING.md](CONTRIBUTING.md). A repository rename does not publish a release. Use the complete ZIP for updates; copying only `main.js`, `manifest.json`, and `styles.css` omits the adapters.
 
-**Agent** is the main Copilot experience for multi-step work. It can inspect notes, use tools, create Obsidian files, and continue across several turns with permissions you control.
+## Choose an agent
 
-- **opencode (recommended):** Let Copilot download and manage it, then use Copilot-hosted models, your own provider key, or a local model.
-- **Claude Code:** Connect an existing installation. Copilot detects common install locations and uses your Claude Code login.
-- **Codex:** Connect Codex through the `@agentclientprotocol/codex-acp` adapter and use your existing Codex login.
+| Agent                | Connection                                                                                    | Important behavior                                                                       |
+| -------------------- | --------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| opencode             | Managed download or your own binary; BYOK, local endpoints, or optional Copilot-hosted models | Existing upstream backend.                                                               |
+| Claude Code          | Existing Claude Code installation                                                             | Uses the configured CLI and its authentication; Anthropic terms apply.                   |
+| Codex                | Managed or custom `@agentclientprotocol/codex-acp` adapter                                    | Uses the compatible bundled Codex CLI and its login.                                     |
+| Grok                 | Local `grok` CLI through the bundled companion adapter                                        | Requires Grok 0.2.117 or newer; Default, Plan, and Auto modes.                           |
+| Muse Code            | Local `muse` CLI through the bundled companion adapter                                        | Text only; no Plan mode; unsupported images and client MCP servers fail explicitly.      |
+| Antigravity (Gemini) | Local `agy` CLI through the bundled companion adapter                                         | Requires explicit automatic-tool consent for this vault; native Plan review is separate. |
 
-Already pay for Claude or ChatGPT, or already have model API access? You can bring that access to Copilot without buying a Copilot plan. Provider terms and usage limits still apply.
+Companion **Configure** provides install/update, executable detection, path selection, and sign-in. Installers require confirmation. Credentials remain with the vendor CLI; a completed login command does not prove access until an agent responds successfully. Set `COMPANION_NODE_PATH` in a backend's environment overrides to select a custom Node runtime.
 
-[Learn how Agent works →](./docs/agent-mode-and-tools.md)
+Models and effort options come from backend catalogs and supported session capabilities. CLI models do not automatically become Quick Chat models. See [Model sources](docs/llm-providers.md) and [Companion backends](docs/companion-backends.md).
 
-## Set up Copilot
+## Permissions and saved work
 
-1. [Install Copilot](https://obsidian.md/plugins?id=copilot) from Obsidian Community Plugins.
-2. Open **Settings → Copilot → Basic → Agents**.
-3. Select **Download opencode**, connect Claude Code with **Auto-detect**, or let Copilot install its tested Codex adapter.
-4. Select the **Agent** ribbon icon, or run **Open Copilot Agent Chat Window**.
+**Grok Plan is not a write or command sandbox.** Plan and Auto approve ordinary tool requests automatically; Plan still asks for separate implementation-plan approval. Default uses native permission requests.
 
-The [Getting Started guide](./docs/getting-started.md) covers each setup path, including managed and custom Codex adapters.
+**Antigravity can run tools automatically after consent.** Copilot cannot intercept every native CLI action or enforce its vault file-service boundaries on those actions. Disabling automatic tools stops active Antigravity sessions and revokes consent.
 
-## Built around your vault
+Muse uses prompt-unmatched approvals and a shell sandbox by default; automatic approval is explicit. Saved companion chats retain their backend and native session IDs. If resume fails, history remains available and starting a new conversation requires an explicit action.
 
-- **Projects:** Give ongoing work its own instructions, reusable context, and chat history. A project works with opencode, Claude, or Codex. [Learn about Projects](./docs/projects.md).
-- **Skills shared across agents:** Add a skill once, then enable it for each installed agent. Copilot also includes skills for Obsidian Markdown, Bases, Canvas, and the Obsidian CLI. [Learn about Skills](./docs/agent-mode-and-tools.md#skills-shared-across-agents).
-- **Commands:** Save repeatable prompts, run them with `/` in Agent, or expose them in the editor and Command palette. [Create a Command](./docs/custom-commands.md).
-- **Quick Ask:** Ask about a selection without leaving the note. Continue the conversation, replace text, insert the answer, or copy it. Quick Ask uses your Quick Chat model. [Set up Quick Ask](./docs/custom-commands.md#quick-ask).
-- **Multiple sessions:** Keep separate Agent tabs open for different tasks. With active Plus access, mention multiple installed agents with `@` for one read-only research or review request.
+See [Agent Chat](docs/agent-mode-and-tools.md), [Projects](docs/projects.md), and [Troubleshooting](docs/troubleshooting-and-faq.md) for the existing vault workflows.
 
-For a short conversation that does not need an agent, use [Quick Chat](./docs/chat-interface.md).
+## External services and privacy
 
-## Use hosted, BYOK, or local models
+More Agents does not supply its own paid model service. Existing **Copilot-hosted**, **Copilot Plus**, dashboard, and self-host controls refer to external upstream services operated by Brevilabs. Their entitlements, billing, and terms are separate from this fork. Vendor CLI and BYOK usage is governed and billed by the chosen provider.
 
-- **Copilot-hosted:** Add a Copilot license, then choose an available hosted model for opencode or Quick Chat. The model picker and dashboard show current access.
-- **Bring your own key:** Add a cloud, local, or OpenAI-compatible provider under **Settings → Copilot → BYOK**. Keys are stored in this device's Obsidian Keychain, not in the vault's `data.json`.
-- **Claude and Codex accounts:** These agents use their own CLI login rather than a key from Copilot's BYOK settings.
-- **Models reported by opencode:** opencode routes them to their backing provider. Free opencode Zen models show a warning because that provider may log or train on prompts; review its terms before sending sensitive content.
+Prompts, notes, files, and tool inputs can leave your device according to the selected model, CLI, skill, or service. Local files alone do not imply local processing. Read [Upstream services and data routes](docs/copilot-plus-and-self-host.md) before enabling hosted features.
 
-Your chosen route determines where prompts and included context are processed. Read [LLM Providers](./docs/llm-providers.md) for setup and [Copilot Plus and Self-Host](./docs/copilot-plus-and-self-host.md) for privacy and routing details.
+The existing **Report an issue** action can upload diagnostics to Brevilabs and open an upstream issue. It is not a More Agents support channel. For fork reports, follow [CONTRIBUTING.md](CONTRIBUTING.md) and share only reviewed, redacted diagnostics.
 
-## Plans
+## License and provenance
 
-The Copilot plugin is open source and works without a Copilot license when you use your own agent account, provider key, or local model. Free use includes normal single-agent Agent chats, Projects with Markdown context, custom Skills and Commands, Quick Chat, Quick Ask, and local Miyo search.
+The Copilot-derived plugin remains covered by the [GNU AGPL version 3](LICENSE). Companion code ported from [All your Companions](https://github.com/zfzfg/all-your-companions) is documented in [adapter provenance](adapters/companions/PROVENANCE.md) and retains [FSL-1.1-MIT notices](adapters/companions/AYC-LICENSE). The Muse SDK has a separate [MIT notice](MUSE-SDK-LICENSE).
 
-Paid access can include Copilot-hosted models and cloud-backed tools. Multi-agent requires active Plus access; check your dashboard for the current entitlement. Model availability and service limits can change, so the [pricing page](https://www.obsidiancopilot.com/en/pricing) and in-app model pickers are the current source of truth.
+The complete companion package must not be described as entirely AGPL or already MIT. The FSL-to-MIT transition is version-specific; compatibility, rights to individual contributions, and SDK redistribution require further review. Preserving notices does not establish compatibility. This documentation update does not relicense code or certify a release.
 
-<p align="center"><a href="https://www.obsidiancopilot.com/en/pricing"><strong>Compare plans →</strong></a></p>
+Implementation checks and outstanding live/platform checks are recorded in [Companion validation](docs/companion-validation.md).
 
-## Trusted by people who think for a living
+## Authors and relationship to upstream
 
-> "The first tool that truly unifies how I search, organize, and retrieve knowledge without ever leaving Obsidian. My workflow is faster, deeper, and more connected. I can't imagine working without it."
->
-> **Jason Zhang**, Investor & Research Analyst
+- **Fork maintainer:** [Collin Lerche (zfzfg)](https://github.com/zfzfg).
+- **Original Copilot:** Logan Yang, the Brevilabs team, and contributors.
+- **AYC ancestry:** Paweł Huryn's Grok Build for VS Code (Community), followed by the All your Companions fork and contributions described in its license and Git history.
 
-<details>
-<summary><strong>More from the community</strong></summary>
-
-> "I drop meeting transcriptions, personal notes, and architecture ideas into my vault. Copilot gives me a personal assistant that finds missing puzzle pieces and surfaces relevant info during live calls, no manual searches."
->
-> **Brad Decker**, CTO, Concierge Auctions
-
-> "Since discovering Copilot, my writing process has been completely transformed. Conversing with my own articles and thoughts is the most refreshing experience I've had in decades."
->
-> **Mat QV**, Professional Writer
-
-</details>
-
-## Frequently asked questions
-
-<details>
-<summary><strong>Can I use Copilot without a paid plan?</strong></summary>
-
-Yes. Connect Claude Code or Codex with its existing account, or use opencode and Quick Chat with your own API key or local model. Your provider may charge for its own usage.
-
-</details>
-
-<details>
-<summary><strong>Does Agent work on mobile?</strong></summary>
-
-Agent is a desktop feature because its backends run local processes. Quick Chat, custom Commands, and Quick Ask remain available on mobile.
-
-</details>
-
-<details>
-<summary><strong>How is my data handled?</strong></summary>
-
-Your notes remain files in your vault, and local Miyo indexes stay on your device. Prompts and any included context go to the model or service you choose. Copilot-hosted models and hosted features send the required input to Brevilabs for processing. See the [disclosure below](#paid-plan-disclosure) and the [privacy policy](https://www.obsidiancopilot.com/en/privacy).
-
-</details>
-
-## Help and links
-
-[Documentation](./docs/index.md) · [YouTube](https://www.youtube.com/@loganhallucinates) · [Report a bug](https://github.com/logancyang/obsidian-copilot/issues/new?template=bug_report.md) · [Request a feature](https://github.com/logancyang/obsidian-copilot/issues/new?template=feature_request.md) · [Privacy](https://www.obsidiancopilot.com/en/privacy)
-
-To report a bug with its evidence attached, use **Settings → Copilot → Advanced → Debugging & support → Report an issue**. It packs a screenshot and recent logs into a zip you review before anything is sent, uploads it privately, and opens a prefilled issue carrying the report ID.
-
-## Support the project
-
-If Copilot is useful to you, consider [sponsoring the project on GitHub](https://github.com/sponsors/logancyang) or buying us a coffee.
-
-<p align="center">
-  <a href="https://www.buymeacoffee.com/logancyang"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me a Coffee" width="165"></a>
-</p>
-
-### Thank you to our GitHub Sponsors
-
-Special thanks to our top sponsors: @mikelaaron, @pedramamini, @Arlorean, @dashinja, @azagore, @MTGMAD, @gpythomas, @emaynard, @scmarinelli, @borthwick, @adamhill, @gluecode, @rusi, @timgrote, @JiaruiYu-Consilium, @ddocta, @AMOz1, @chchwy, @pborenstein, @GitTom, @kazukgw, @mjluser1, @joesfer, @rwaal, @turnoutnow-harpreet, @dreznicek, @xrise-informatik, @jeremygentles, @ZhengRui, @bfoujols, @jsmith0475, @pagiaddlemon, @sebbyyyywebbyyy, @royschwartz2, @vikram11, @amiable-dev, @khalidhalim, @DrJsPBs, @chishaku, @Andrea18500, @shayonpal, @rhm2k, @snorcup, @JohnBub, @obstinatelark, @jonashaefele, @vishnu2kmohan
-
-## Paid Plan Disclosure
-
-Copilot is a product of Brevilabs LLC and is not affiliated with Obsidian. Visit [obsidiancopilot.com](https://obsidiancopilot.com/) for current plan details.
-
-- An account and payment are required for paid access.
-- Hosted models and cloud-backed features require network access.
-- **Privacy and data handling:**
-  - **Free use:** Messages and note context go to the LLM provider, local endpoint, or CLI agent you configure. Brevilabs does not receive them unless you invoke a Brevilabs-hosted feature, or upload a diagnostic report yourself.
-  - **Paid hosted services:** Brevilabs's backend and its vetted enterprise model providers process the full request. Hosted features receive the inputs they need, such as search queries, URLs, and files used by Quick Chat tools or Agent project context. The privacy policy says request content is processed transiently, not retained, and not used for training.
-  - **Diagnostic reports:** The zip you review under **Report an issue** reaches Brevilabs only when you choose to upload it. Unlike the requests above it is deliberately retained, so a maintainer can look it up later: it is stored privately, referenced only by an opaque report ID, carries no license key or account identity, and is deleted automatically after 60 days. The public issue carries the ID, never the bundle. The copy on your own machine is yours and is not part of that deletion.
-  - **User ID:** Hosted feature requests include a randomly generated UUID for service delivery, license abuse prevention, and rate limiting. It is not used for tracking, profiling, or analytics.
-- See the [privacy policy](https://www.obsidiancopilot.com/en/privacy) for full terms.
-- The Copilot plugin frontend is fully open source. The backend services that support hosted features are closed source and proprietary.
-- We offer a full refund within 14 days of purchase if you are not satisfied.
-
-## Authors
-
-Brevilabs Team · [logan@brevilabs.com](mailto:logan@brevilabs.com) · [@logancyang](https://twitter.com/logancyang)
+More Agents is independently maintained. This fork does not claim endorsement by Obsidian, Brevilabs, or the agent providers. Original authorship and license notices remain intact.

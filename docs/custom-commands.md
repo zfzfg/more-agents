@@ -1,5 +1,7 @@
 # Copilot Commands and Quick Ask
 
+> **More Agents fork:** The running plugin is still named **Copilot** and uses ID `copilot`; UI labels and existing storage paths below are intentional. Install the [complete fork package](companion-backends.md#install-the-fork), not the upstream Community Plugins entry. Copilot/Brevilabs services remain external upstream offerings.
+
 Copilot commands are prompts you save once and reuse. They are best for repeatable jobs such as fixing grammar, summarizing a note, or rewriting selected text.
 
 For a fast question or rewrite while you are editing, use **Quick Ask** instead.

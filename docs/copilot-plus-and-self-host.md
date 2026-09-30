@@ -1,4 +1,8 @@
-# Copilot Plans, Privacy, and Self-Hosting
+# Upstream Copilot Services, Privacy, and Self-Hosting
+
+> **More Agents fork:** The running plugin is still named **Copilot** and uses ID `copilot`; UI labels and existing storage paths below are intentional. Install the [complete fork package](companion-backends.md#install-the-fork), not the upstream Community Plugins entry. Copilot/Brevilabs services remain external upstream offerings.
+
+More Agents does not operate these paid services or promise upstream prices, refunds, or entitlements. This guide describes inherited controls. Confirm current terms with Brevilabs. Native companion CLIs use their own provider accounts and do not require a Copilot license for ordinary single-agent chats. Existing Plus-gated features remain gated.
 
 Copilot's core Agent Chat is free. You can use it with your own API keys, local models, a Claude Code subscription, or a ChatGPT plan through Codex. A Copilot paid plan is optional and adds managed models or services when you do not want to assemble everything yourself.
 

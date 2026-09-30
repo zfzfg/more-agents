@@ -1,5 +1,7 @@
 # Use Live Relevant Notes in Copilot
 
+> **More Agents fork:** The running plugin is still named **Copilot** and uses ID `copilot`; UI labels and existing storage paths below are intentional. Install the [complete fork package](companion-backends.md#install-the-fork), not the upstream Community Plugins entry. Copilot/Brevilabs services remain external upstream offerings.
+
 Relevant Notes brings related notes into view while you work. You can read a suggestion, link it into your writing, or add it to a chat before asking your question.
 
 This guide covers two workflows: discovering connections while writing a note, and finding useful context while composing a chat message.
@@ -69,14 +71,14 @@ If suggestions seem unrelated to what you intended, check the source label first
 
 ## If suggestions do not appear
 
-| Message or symptom | What to do |
-| --- | --- |
-| Miyo is not connected | Start Miyo and reconnect in Copilot settings. |
-| This vault is not registered | Add this vault to Miyo. |
-| Still indexing or note not indexed | Let indexing finish and review the note's status in Miyo. |
-| This note is excluded | Check Miyo's folder rules. |
-| No semantic matches yet | Try a note with more useful text or a more specific question. A connected index may have no related material. |
-| No usable chat context | Write a message or add an indexed note. |
-| Editor suggestions work, but chat suggestions do not | Check Copilot and Miyo versions and turn on Live. Chat suggestions require Miyo 0.2.27 support. |
+| Message or symptom                                   | What to do                                                                                                    |
+| ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| Miyo is not connected                                | Start Miyo and reconnect in Copilot settings.                                                                 |
+| This vault is not registered                         | Add this vault to Miyo.                                                                                       |
+| Still indexing or note not indexed                   | Let indexing finish and review the note's status in Miyo.                                                     |
+| This note is excluded                                | Check Miyo's folder rules.                                                                                    |
+| No semantic matches yet                              | Try a note with more useful text or a more specific question. A connected index may have no related material. |
+| No usable chat context                               | Write a message or add an indexed note.                                                                       |
+| Editor suggestions work, but chat suggestions do not | Check Copilot and Miyo versions and turn on Live. Chat suggestions require Miyo 0.2.27 support.               |
 
 [Watch the full Relevant Notes demo →](https://pub-d0d5db63b5e446cc848d32b65229d622.r2.dev/copilot/releases/4.0.8/relevant-notes-demo-20260910.mp4)

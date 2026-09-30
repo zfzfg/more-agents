@@ -1,5 +1,7 @@
 # Models, Effort, and Permissions
 
+> **More Agents fork:** The running plugin is still named **Copilot** and uses ID `copilot`; UI labels and existing storage paths below are intentional. Install the [complete fork package](companion-backends.md#install-the-fork), not the upstream Community Plugins entry. Copilot/Brevilabs services remain external upstream offerings.
+
 Copilot keeps a separate model list for each experience. A model can be
 available in Copilot without appearing in every picker: you choose where it is
 enabled, then choose the default for new chats.
@@ -13,6 +15,9 @@ enabled, then choose the default for new chats.
 | Models reported by opencode             | **opencode** only                                                 |
 | Models reported by Claude Code          | **Claude** only                                                   |
 | Models reported by Codex                | **Codex** only                                                    |
+| Models reported by Grok                 | **Grok** only                                                     |
+| Models reported by Muse Code            | **Muse Code** only                                                |
+| Models reported by Antigravity          | **Antigravity (Gemini)** only                                     |
 
 The available lineups can change, so the lists in Copilot are the source of
 truth. See [Model Sources and BYOK](llm-providers.md) to activate a Copilot license, add
@@ -23,18 +28,18 @@ a BYOK provider, or connect an agent account.
 Open **Settings → Copilot → Basic → Agents**.
 
 1. Set **Default backend** to the agent you want when a new Agent Chat opens.
-2. Select **opencode**, **Claude**, **Codex**, or **Quick Chat**.
+2. Select **opencode**, **Claude**, **Codex**, **Grok**, **Muse Code**, **Antigravity (Gemini)**, or **Quick Chat**.
 3. Turn on the models you want shown in that experience's model picker.
 4. Choose **Default model**. For an agent, **Agent default** leaves the choice
    to that agent.
 5. If the selected agent model supports it, choose **Default effort**. The
    available effort levels come from the agent and model, so they vary.
 
-The four lists are independent:
+The lists are independent:
 
 - **opencode** can combine Copilot-hosted models, compatible BYOK models, and
   models reported by opencode.
-- **Claude** and **Codex** show only models reported by their installed tools.
+- **Claude**, **Codex**, **Grok**, **Muse Code**, and **Antigravity** show models reported by their installed tools.
   Their CLI accounts own access and billing; BYOK models are not added to these
   lists.
 - **Quick Chat models** contains Copilot-hosted and BYOK chat models. Agent-owned
@@ -72,16 +77,17 @@ In **Quick Chat**, the picker shows only enabled **Quick Chat models**. Its
 
 ## Model, effort, and permissions
 
-| Experience     | Choices available now                                                                                                                                                                                                                            |
-| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **opencode**   | Model; effort when the model reports it; **Default** or **Auto** permissions. **Plan** is not available.                                                                                                                                         |
-| **Claude**     | Model; effort when supported; **Default**, **Plan**, and **Auto** permissions. **Auto mode permissions** controls what Auto may approve. **Show extended thinking** controls whether reasoning blocks are displayed; it is separate from effort. |
-| **Codex**      | Model; effort when reported; whichever of **Default**, **Plan**, and **Auto** the installed adapter supports.                                                                                                                                    |
-| **Quick Chat** | Model only. Agent effort and permission controls do not apply.                                                                                                                                                                                   |
+| Experience               | Choices available now                                                                                                                                                                                                                            |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **opencode**             | Model; effort when the model reports it; **Default** or **Auto** permissions. **Plan** is not available.                                                                                                                                         |
+| **Claude**               | Model; effort when supported; **Default**, **Plan**, and **Auto** permissions. **Auto mode permissions** controls what Auto may approve. **Show extended thinking** controls whether reasoning blocks are displayed; it is separate from effort. |
+| **Codex**                | Model; effort when reported; whichever of **Default**, **Plan**, and **Auto** the installed adapter supports.                                                                                                                                    |
+| **Quick Chat**           | Model only. Agent effort and permission controls do not apply.                                                                                                                                                                                   |
+| **Grok**                 | Model and supported effort; **Default**, **Plan**, and **Auto**. Plan and Auto approve ordinary tools; Plan separately asks for implementation-plan approval.                                                                                    |
+| **Muse Code**            | Model and supported effort; default prompt-unmatched approvals with a shell sandbox, or explicit automatic approval. No Plan mode.                                                                                                               |
+| **Antigravity (Gemini)** | Model and supported effort; automatic tools require vault consent. Native Plan mode has separate plan review, but is not a plugin-enforced file or command sandbox.                                                                              |
 
-**Default** uses the agent's normal approval behavior, **Plan** prepares a plan
-before editing, and **Auto** uses the selected agent's automatic permission
-behavior.
+**Default** uses the agent's normal approval behavior, and **Auto** uses its automatic permission behavior. **Plan** is backend-specific: it does not guarantee read-only execution. See [Companion permissions](companion-backends.md#permissions-and-limitations) before using Grok or Antigravity Plan.
 
 Copilot V4 does not expose temperature, top-p, or similar tuning in these model
 lists. Quick Chat uses your vault-root `AGENTS.md` by default. **Chat Settings**

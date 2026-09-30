@@ -1,14 +1,18 @@
-# Getting Started with Copilot V4
+# Getting Started with More Agents
 
-Copilot V4 is built around **Agent Chat**, a desktop workspace where opencode, Claude Code, or Codex can read your vault, use tools, and complete multi-step work with the permissions you choose.
+> **More Agents fork:** The running plugin is still named **Copilot** and uses ID `copilot`; UI labels and existing storage paths below are intentional. Install the [complete fork package](companion-backends.md#install-the-fork), not the upstream Community Plugins entry. Copilot/Brevilabs services remain external upstream offerings.
+
+More Agents extends Copilot V4 with Grok, Muse Code, and Antigravity (Gemini). Agent Chat is a desktop workspace for multi-step vault work; permission behavior depends on the selected backend.
 
 Agent Chat is available in Obsidian on desktop. Quick Chat, Copilot Commands, and Quick Ask remain available for shorter tasks and on mobile.
 
-## Install Copilot
+## Install More Agents
 
-1. Open **Obsidian Settings → Community plugins**.
-2. Select **Browse**, search for **Copilot**, and install it.
-3. Enable Copilot. The Agent Chat icon appears in the left ribbon on desktop.
+1. Back up your vault and use a separate test vault: this fork and upstream currently share plugin ID `copilot`.
+2. Close Obsidian and extract every file from the fork's complete `obsidian-copilot-companions.zip` into `.obsidian/plugins/copilot`. See [Companion installation](companion-backends.md#install-the-fork) for release availability and building from source.
+3. Install Node.js 20 or later if you want Grok, Muse Code, or Antigravity. Restart Obsidian, enable community plugins, and enable **Copilot**.
+
+The Community Plugins listing for Copilot installs the original project. It does not install More Agents or its companion adapters. Use the full fork ZIP for updates.
 
 ## Set Up Your First Agent Chat
 
@@ -47,13 +51,19 @@ If your adapter is below the supported minimum, open **Configure** in Settings t
 
 For manual installations, Copilot requires a supported `@agentclientprotocol/codex-acp` adapter and checks compatibility in **Configure**. See [Codex installation details](agent-mode-and-tools.md#codex). Codex uses the login stored by the bundled Codex CLI; there is no Codex key to paste into Copilot.
 
+### Grok, Muse Code, or Antigravity
+
+Open **Basic → Agents**, select **Grok**, **Muse Code**, or **Antigravity (Gemini)**, and open **Configure**. Re-check an installed CLI, save its executable path, or confirm **Install / update**, then sign in through the vendor CLI. Grok and Muse offer terminal sign-in; Antigravity opens an interactive `agy` terminal.
+
+Antigravity requires explicit automatic-tool consent for this vault. Grok Plan automatically approves ordinary tools and is not a read-only sandbox. Muse has no Plan mode and accepts text only. See [Companion backends](companion-backends.md) for supported inputs, effort selection, and saved-session behavior.
+
 ## Start Your First Agent Chat
 
 1. Click the **Agent Chat** ribbon icon, or run **Open Copilot Agent Chat Window** from the command palette.
 2. If **Select your agent** appears, choose an **Installed** agent and select **Start chat**. When the default backend is already ready, Copilot opens its chat automatically.
 3. Pick a model and permission setting beside the message box, then describe the outcome you want.
 
-Try a concrete first request such as: “Review the unfinished tasks in this vault and make a short plan.” With **Default** selected, Agent Chat shows its work and asks before actions that need your approval.
+Try a concrete first request such as: “Review the unfinished tasks in this vault and make a short plan.” Check the selected backend's permission behavior before starting. Antigravity uses automatic tools after consent, while Grok Plan and Auto automatically approve ordinary tools.
 
 ## Projects, Skills, and Commands
 

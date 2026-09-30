@@ -1,6 +1,8 @@
 # Agent Chat
 
-Agent Chat is the default Copilot experience on desktop. It gives an AI agent a working view of your vault so it can answer questions, use tools, and make permissioned changes while you follow the work in chat.
+> **More Agents fork:** The running plugin is still named **Copilot** and uses ID `copilot`; UI labels and existing storage paths below are intentional. Install the [complete fork package](companion-backends.md#install-the-fork), not the upstream Community Plugins entry. Copilot/Brevilabs services remain external upstream offerings.
+
+Agent Chat is the default More Agents experience on desktop; the UI still labels the plugin Copilot. It gives an AI agent a working view of your vault so it can answer questions, use tools, and make permissioned changes while you follow the work in chat.
 
 Agent Chat follows a growing response until you scroll up to read earlier messages. Select the round down-arrow near the bottom of the chat, or scroll to the end, to follow new output again.
 
@@ -12,11 +14,14 @@ Your sent messages display Markdown formatting, including headings, lists, code 
 
 Open [**Settings → Copilot → Basic → Agents**](settings.md#basic). Configure at least one agent, then choose the **Default backend** for new chats.
 
-| Agent        | Best starting point                             | Where model access comes from                                              |
-| ------------ | ----------------------------------------------- | -------------------------------------------------------------------------- |
-| **opencode** | Recommended for most people                     | Copilot-hosted models, your API providers, or local OpenAI-compatible APIs |
-| **Claude**   | You already use Claude Code                     | Your Claude Code installation and Anthropic account                        |
-| **Codex**    | You already use the Codex CLI and Codex account | Your Codex CLI login through the `codex-acp` adapter                       |
+| Agent                    | Best starting point                             | Where model access comes from                                              |
+| ------------------------ | ----------------------------------------------- | -------------------------------------------------------------------------- |
+| **opencode**             | Recommended for most people                     | Copilot-hosted models, your API providers, or local OpenAI-compatible APIs |
+| **Claude**               | You already use Claude Code                     | Your Claude Code installation and Anthropic account                        |
+| **Codex**                | You already use the Codex CLI and Codex account | Your Codex CLI login through the `codex-acp` adapter                       |
+| **Grok**                 | You use Grok's local CLI                        | Your Grok CLI login and catalog                                            |
+| **Muse Code**            | You use Muse's local CLI                        | Your Muse CLI login and catalog                                            |
+| **Antigravity (Gemini)** | You use Antigravity's local CLI                 | Your `agy` authentication and catalog; explicit automatic-tool consent     |
 
 This fork also provides **Grok**, **Muse Code**, and **Antigravity (Gemini)** through their local vendor CLIs. See [Companion backends](companion-backends.md) for release installation, sign-in, updates, permissions and limitations.
 
@@ -113,11 +118,11 @@ Each agent has its own model list. The models shown in one agent do not automati
 
 The permission picker shows only choices supported by the current agent:
 
-| Choice   | What it does                                                                                         |
-| -------- | ---------------------------------------------------------------------------------------------------- |
-| **Safe** | Allows edits under the agent's approval rules                                                        |
-| **Plan** | Drafts a plan and waits for your approval before editing when the current agent supports this choice |
-| **Auto** | Reduces approval prompts according to the current agent's automatic permission rule                  |
+| Choice   | What it does                                                                                               |
+| -------- | ---------------------------------------------------------------------------------------------------------- |
+| **Safe** | Allows edits under the agent's approval rules                                                              |
+| **Plan** | Uses the backend's planning behavior and plan review; does not universally prevent edits or tool execution |
+| **Auto** | Reduces approval prompts according to the current agent's automatic permission rule                        |
 
 opencode supports **Safe** and **Auto**. Claude supports **Safe**, **Plan**, and **Auto**. Codex shows the choices supported by the installed adapter. Claude also has an **Auto mode permissions** setting that controls how much Auto may approve.
 
@@ -138,6 +143,8 @@ Permission and question cards stay in a scrolling action area above the message 
 Your vault or project is the agent's working directory, not a security sandbox. Auto or bypass permissions can reach other files and services available to the agent or your account. Use **Safe** for unfamiliar work and review persistent permissions carefully.
 
 ## Context and history
+
+For Grok, Muse Code, and Antigravity, use the [companion permission matrix](companion-backends.md#permissions-and-limitations). Grok Plan automatically approves ordinary tools, Antigravity requires automatic-tool consent, and Muse has no Plan mode. Resume and supported inputs follow each backend's capabilities; Muse does not support images or client MCP servers.
 
 Agent Chat keeps each conversation separate:
 

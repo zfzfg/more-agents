@@ -1,68 +1,26 @@
-# Copilot documentation
+# More Agents documentation sources
 
-The static site published at [docs.obsidiancopilot.com](https://docs.obsidiancopilot.com). It is an
-[Astro Starlight](https://starlight.astro.build/) package that is independent of the plugin build:
-its own `package.json`, its own lockfile, and its own dependency tree.
+The guides in this directory document the More Agents fork. The current plugin UI is still named **Copilot**, so guides retain actual settings labels, commands, and storage paths. Start at [index.md](index.md).
 
-The guides next to this README are the single source of truth and are never modified to suit this
-site. The guides carry no frontmatter and link to each other by filename, so the site adapts them at
-build time: `src/docs-loader.mjs` takes each guide's opening level-one heading as its page title, and
-`src/remark-published-docs.mjs` removes that heading from the body and rewrites `getting-started.md`
-style links to `/getting-started/`. Slugs are the source filenames, so every guide keeps the URL it
-had on the previous site minus its `/docs` prefix. Only the Markdown files directly next to this
-README are published; `README.md`, `plans/`, and the non-Markdown installers stay excluded.
+The inherited static-site package is separate from the plugin build, with its own dependencies and lockfile. It loads each guide's opening heading as its page title and rewrites relative guide links for publication. The Markdown sources are the canonical fork documentation.
 
-## Building
+## Local site checks
 
-Astro 7 requires Node 22.12 or newer, which is ahead of what the plugin build uses. The `.nvmrc`
-pins local development; set the Vercel project's Node.js Version to 22.x so the builds stay
-independent.
+Use Node.js 22.12 or newer for the documentation site. From this directory:
 
 ```sh
 npm ci
 npm test
-npm run build     # emits dist/
-npm run preview   # serves the built site
+npm run build
+npm run preview
 ```
 
-## Deployment
+The build emits `dist/`. This is separate from the companion runtime requirement of Node.js 20 or later.
 
-Create a separate Vercel project for this site with these settings:
+## Hosting status
 
-- **Root Directory:** `docs`
-- **Framework Preset:** Astro
-- **Build Command:** `npm run build`
-- **Output Directory:** `dist`
-- **Production Branch:** `master`
-- **Node.js Version:** `22.x`
+More Agents has no documentation domain configured by this change. `docs.obsidiancopilot.com` belongs to the upstream project and does not publish this fork's guides. The inherited Astro configuration, navigation, and deployment metadata still refer to upstream; a fork-specific hosted site needs a separate configuration review before deployment.
 
-Attach `docs.obsidiancopilot.com` to that project. No environment variables are required to build
-or preview the site.
+If publishing a fork site later, use `docs` as its root, Astro as its framework, `npm run build` as its build command, and `dist` as its output. Configure a domain controlled by the fork maintainer and review all repository, support, canonical URL, and privacy links first.
 
-## Production analytics
-
-Analytics is optional and must remain disabled until the privacy policy is confirmed to cover the
-docs subdomain. After that approval, add `PUBLIC_POSTHOG_KEY` and `PUBLIC_POSTHOG_HOST` to the
-Vercel **Production** environment only, using values from the approved production configuration.
-Keep their values out of the repository, issue comments, build logs, and preview environments.
-
-After deploying, visit a few docs pages and run this query in PostHog to confirm that only the
-allowlisted events and canonical paths arrive:
-
-```sql
-SELECT
-  event,
-  if(event IN ('$pageview', '$pageleave'), 'allowed', 'unexpected') AS contract_status,
-  timestamp,
-  properties.$host AS host,
-  properties.$pathname AS path,
-  properties.$referring_domain AS referring_domain
-FROM events
-WHERE properties.$host = 'docs.obsidiancopilot.com'
-ORDER BY timestamp DESC
-LIMIT 100
-```
-
-Verify that every row is classified as `allowed`, paths contain no query strings, fragments, search
-terms, or ad-click identifiers, and no autocapture or replay events appear. To roll back, remove
-both variables from Vercel Production and redeploy; the docs continue to work without analytics.
+Analytics is optional. Keep analytics environment variables unset for local builds and previews. A later production deployment requires its own privacy and analytics review; upstream policies and accounts do not automatically cover the fork. No site deployment is part of this documentation update.

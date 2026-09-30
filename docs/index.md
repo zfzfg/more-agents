@@ -1,11 +1,11 @@
-# Copilot for Obsidian V4
+# More Agents documentation
 
-Copilot V4 starts with **Agent Chat**, where opencode, Claude Code, or Codex can read your vault, use tools, and complete multi-step work with your approval. Quick Ask, Copilot Commands, and Quick Chat remain available for smaller jobs and mobile use.
+More Agents extends Copilot V4 with **Grok**, **Muse Code**, and **Antigravity (Gemini)** alongside opencode, Claude Code, and Codex. Agent Chat supports multi-step vault work; permissions depend on the backend. Quick Ask, Copilot Commands, and Quick Chat remain available for smaller jobs and mobile use.
 
 ## Start here
 
-1. Install Copilot from Obsidian's Community Plugins.
-2. Open **Settings → Copilot → Basic → Agents**. Follow [Getting Started with Copilot V4](getting-started.md) to download managed opencode or Codex, or auto-detect Claude Code.
+1. Install the [complete More Agents package](companion-backends.md#install-the-fork). The upstream Community Plugins entry does not install this fork. The current UI and plugin ID remain **Copilot** and `copilot`.
+2. Open **Settings → Copilot → Basic → Agents**. Follow [Getting Started with More Agents](getting-started.md) to download managed opencode or Codex, or auto-detect Claude Code.
 3. Run **Open Copilot Agent Chat Window**. A ready default agent opens automatically; if **Select your agent** appears, choose an **Installed** agent and select **Start chat**.
 
 For most people, opencode is the best starting point. Copilot can install and manage both opencode and the Codex adapter; Claude Code and Codex use their existing command-line accounts. Windows users can also follow [Windows setup for Agent Chat](agent-mode-windows-setup.md).
@@ -13,7 +13,9 @@ For most people, opencode is the best starting point. Copilot can install and ma
 ## Agent Chat
 
 - [Agent Chat](agent-mode-and-tools.md) explains agents, models, permissions, sessions, and safe use.
-- [Choose an agent](agent-mode-and-tools.md#choose-an-agent) for opencode, Claude Code, or Codex.
+- [Choose an agent](agent-mode-and-tools.md#choose-an-agent) for all six backends.
+- [Companion backends](companion-backends.md) covers Grok, Muse Code, and Antigravity installation, sign-in, Node.js, permissions, and limitations.
+- [Companion validation](companion-validation.md) records completed checks and remaining release checks.
 - [Ask multiple agents](agent-mode-and-tools.md#multi-agent-answers) to research or review the same question in parallel.
 - [Share Skills across agents](agent-mode-and-tools.md#skills-across-agents) so one reusable workflow works in opencode, Claude Code, and Codex.
 - [Projects](projects.md) give ongoing work its own instructions, context, and chat history.
@@ -31,7 +33,7 @@ For most people, opencode is the best starting point. Copilot can install and ma
 - [Model Sources and BYOK](llm-providers.md) covers Copilot-hosted models, BYOK for opencode and Quick Chat, and local endpoints.
 - [Models, Effort, and Permissions](models-and-parameters.md) explains model selection, defaults, approval behavior, and reasoning effort.
 - [Miyo: Local-First Search and AI Ownership](vault-search-and-indexing.md) brings more powerful local-first search and AI ownership to your knowledge.
-- [Copilot Plans, Privacy, and Self-Hosting](copilot-plus-and-self-host.md) compares free and paid access, hosted features, privacy, and self-hosting.
+- [Upstream Copilot Services, Privacy, and Self-Hosting](copilot-plus-and-self-host.md) compares free and paid access, hosted features, privacy, and self-hosting.
 - [Connect Miyo with Copilot](miyo-setup.md) walks through setup with screenshots and short videos.
 - [Use one Miyo server from several devices](miyo-remote-setup.md) connects Copilot to a shared host through Tailscale.
 
@@ -41,4 +43,6 @@ For most people, opencode is the best starting point. Copilot can install and ma
 
 ## Help
 
-- [Troubleshooting and FAQ](troubleshooting-and-faq.md) fixes common Agent Chat, model, search, and Quick Ask problems.
+- [Troubleshooting and FAQ](troubleshooting-and-faq.md) fixes common Agent Chat, companion, model, search, and Quick Ask problems.
+- [Contributing and fork support](https://github.com/zfzfg/more-agents/blob/master/CONTRIBUTING.md) explains reporting problems to the fork maintainer. The existing in-app diagnostic upload targets Brevilabs, not More Agents.
+- [License and provenance](https://github.com/zfzfg/more-agents/blob/master/README.md#license-and-provenance) describes the AGPL core, FSL-derived adapters, and unresolved review items.

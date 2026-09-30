@@ -1,8 +1,10 @@
 # Model Sources and BYOK
 
-Copilot V4 can get models from a Copilot plan, your own provider key or local
+> **More Agents fork:** The running plugin is still named **Copilot** and uses ID `copilot`; UI labels and existing storage paths below are intentional. Install the [complete fork package](companion-backends.md#install-the-fork), not the upstream Community Plugins entry. Copilot/Brevilabs services remain external upstream offerings.
+
+More Agents can get models from a Copilot plan, your own provider key or local
 endpoint, or an agent account you already use. These options are separate.
-Adding a key does not change the models supplied by Claude Code or Codex.
+Adding a BYOK key does not change models supplied by Claude Code, Codex, Grok, Muse Code, or Antigravity.
 
 ## Choose a model source
 
@@ -13,6 +15,11 @@ Adding a key does not change the models supplied by Claude Code or Codex.
 | **Models reported by opencode**     | No         | opencode                                   |
 | **Claude Code account**             | No         | Claude                                     |
 | **Codex account**                   | No         | Codex                                      |
+| **Grok CLI access**                 | No         | Grok                                       |
+| **Muse CLI access**                 | No         | Muse Code                                  |
+| **Antigravity CLI access**          | No         | Antigravity (Gemini)                       |
+
+Grok, Muse Code, and Antigravity provide Agent Chat models through their own CLI catalogs and credentials. They are not Quick Chat model sources. Their effort options depend on reported capabilities; see [Companion backends](companion-backends.md).
 
 Models reported by opencode are routed to their backing provider. Free
 opencode Zen models show a warning because that provider may log or train on

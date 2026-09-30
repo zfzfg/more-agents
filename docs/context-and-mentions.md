@@ -1,5 +1,7 @@
 # Context and Mentions
 
+> **More Agents fork:** The running plugin is still named **Copilot** and uses ID `copilot`; UI labels and existing storage paths below are intentional. Install the [complete fork package](companion-backends.md#install-the-fork), not the upstream Community Plugins entry. Copilot/Brevilabs services remain external upstream offerings.
+
 Context is the material Copilot gives an AI with your request. Choose the shortest lifetime that fits the job:
 
 | Context type                     | How long it lasts                                 |

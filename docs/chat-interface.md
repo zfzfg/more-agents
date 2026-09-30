@@ -1,5 +1,7 @@
 # Quick Chat
 
+> **More Agents fork:** The running plugin is still named **Copilot** and uses ID `copilot`; UI labels and existing storage paths below are intentional. Install the [complete fork package](companion-backends.md#install-the-fork), not the upstream Community Plugins entry. Copilot/Brevilabs services remain external upstream offerings.
+
 Quick Chat is Copilot V4's lightweight conversation view. Use it for a short question, rewrite, or discussion that does not need agent tools or a project workspace.
 
 On desktop, start with **Agent Chat** for multi-step work, reusable Skills, permissioned file changes, or project context. Click **Open Copilot Agent Chat** in the ribbon or run **Open Copilot Agent Chat Window** from the command palette. On mobile, where Agent Chat is unavailable, Quick Chat is the main conversation view. See [Agent Chat](agent-mode-and-tools.md).

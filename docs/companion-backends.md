@@ -1,8 +1,12 @@
-# Companion backends
+# More Agents companion backends
 
-This fork adds Grok, Muse Code and Antigravity (Gemini) to desktop Agent Mode. Existing defaults and provider settings stay unchanged. Copilot continues to load on mobile; local CLI agents require desktop Obsidian.
+More Agents, maintained by Collin Lerche (zfzfg), adds Grok, Muse Code and Antigravity (Gemini) to desktop Agent Mode. Existing defaults and provider settings stay unchanged. Copilot continues to load on mobile; local CLI agents require desktop Obsidian.
 
 ## Install the fork
+
+The repository is [zfzfg/more-agents](https://github.com/zfzfg/more-agents). Check [its releases](https://github.com/zfzfg/more-agents/releases) for a complete package. If none is available, follow [the source build instructions](https://github.com/zfzfg/more-agents/blob/master/CONTRIBUTING.md#build-and-package). The repository rename does not create a release or change the current archive filename.
+
+The current UI name is **Copilot**, plugin ID is `copilot`, and manifest version is **4.0.12**. The upstream Copilot Community Plugins entry does not install this fork. Both currently share an ID; use a separate vault and back up existing plugin data before replacing an installation.
 
 Extract **all** files from `obsidian-copilot-companions.zip` into your vault's `.obsidian/plugins/copilot` directory and restart Obsidian. Besides the usual plugin files, the release contains three `companion-*.cjs` adapters and license notices. Each adapter contains its runtime dependencies and uses a separately installed Node.js runtime (version 20 or later). No development checkout or `node_modules` are needed. Install Node.js and restart Obsidian before starting these backends. A custom runtime can be selected with `COMPANION_NODE_PATH` in the backend environment overrides.
 
@@ -19,6 +23,8 @@ Open **Basic / Agents**, choose a backend, then **Configure**.
 
 Credentials remain with the CLI. Credential-file presence never proves successful authentication. Login completion is reported as unverified until a successful agent response checks access. CLI paths, versions and environment overrides follow device profiles; model and mode preferences may sync.
 
+Copilot-hosted services are external Brevilabs offerings; companion CLIs use their own vendor credentials and catalogs.
+
 Models come from backend catalogs. Effort selection is offered when supported. The existing Copilot instruction builder supplies a tagged session-prompt block where a native system-prompt override is unavailable. The fork does not edit global CLI rule files, and removes the internal prefix during history replay.
 
 ## Permissions and limitations
@@ -27,7 +33,7 @@ Grok offers **Default** (Agent), **Plan**, and **Auto** (YOLO) in the chat mode 
 
 | Backend              | Permissions                                                                             | Planning                                          | Limitations                                                                                           |
 | -------------------- | --------------------------------------------------------------------------------------- | ------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
-| Grok                 | Native tool requests use Copilot dialogs                                                | Advertised native Plan mode; separate plan review | Requires Grok 0.2.117 or newer; known broken Windows stdio builds are rejected                        |
+| Grok                 | Default uses native permission dialogs; Plan and Auto approve ordinary tools            | Advertised native Plan mode; separate plan review | Requires Grok 0.2.117 or newer; known broken Windows stdio builds are rejected                        |
 | Antigravity (Gemini) | Automatic tools require explicit consent for this vault                                 | Native Plan mode and separate plan review         | Copilot cannot ask before each tool or enforce its Vault file-service boundaries on native CLI access |
 | Muse Code            | Prompt-unmatched approvals and shell sandbox by default; automatic approval is explicit | No Plan mode                                      | Text only; unsupported images and client MCP servers fail explicitly                                  |
 

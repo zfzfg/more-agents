@@ -1,6 +1,22 @@
-# Troubleshooting Copilot V4
+# Troubleshooting More Agents
+
+> **More Agents fork:** The running plugin is still named **Copilot** and uses ID `copilot`; UI labels and existing storage paths below are intentional. Install the [complete fork package](companion-backends.md#install-the-fork), not the upstream Community Plugins entry. Copilot/Brevilabs services remain external upstream offerings.
 
 Start in **Settings → Copilot → Basic → Agents** and check the status beside the Agent Chat backend you want to use.
+
+## Fork installation and companion setup
+
+- **Only upstream agents appear:** confirm that you installed the fork's build. The Copilot Community Plugins listing installs upstream.
+- **Adapter missing:** extract all files from the companion ZIP into `.obsidian/plugins/copilot`; the standard three plugin files are insufficient.
+- **Node missing or too old:** install Node.js 20 or later, restart Obsidian, or set `COMPANION_NODE_PATH` in the backend's environment overrides.
+- **CLI not found:** open **Configure**, select **Re-check**, or save the executable path. Paths and environment overrides belong to the current device profile.
+- **Login ended but chat fails:** login completion is unverified until an agent responds. Use terminal sign-in if input is required and check the vendor's access and limits.
+- **Antigravity refuses to start:** review and enable automatic-tool consent for this vault. Disabling consent stops its running sessions.
+- **Grok modes missing:** reopen existing Grok chats after updating the adapter. Plan is not read-only and automatically approves ordinary tools.
+- **Muse image, MCP, or Plan fails:** images and client MCP servers are unsupported; Muse has no Plan mode. Use text input or another backend.
+- **Saved chat cannot resume:** history stays available; starting a new conversation requires an explicit action. Updating a CLI can interrupt a turn.
+
+See [Companion backends](companion-backends.md) and the [validation record](companion-validation.md) for limitations. For fork reports, follow [CONTRIBUTING.md](https://github.com/zfzfg/more-agents/blob/master/CONTRIBUTING.md); the in-app upload action targets upstream Brevilabs.
 
 ## Agent Chat setup
 
@@ -102,9 +118,11 @@ See [Copilot Commands and Quick Ask](custom-commands.md#quick-ask) for selection
 
 ## Logs and bug reports
 
-Use **Advanced → Debugging & support → Report an issue** for any Copilot problem, Agent Chat or Quick Chat alike. Turn on **Debug Mode** in the same section first and reproduce the problem, so the logs you send actually contain it.
+For More Agents problems, follow [the fork contribution guide](https://github.com/zfzfg/more-agents/blob/master/CONTRIBUTING.md) and collect reviewed local logs. Turn on **Debug Mode** under **Advanced → Debugging & support**, then reproduce the problem so the logs contain it.
 
-### Filing a report
+The inherited **Report an issue** action uploads to Brevilabs and opens the original Copilot project's issue page. More Agents maintainers cannot retrieve those private uploads. The workflow below describes that upstream action, not a fork reporting service.
+
+### Filing an upstream Copilot report
 
 1. **Describe what went wrong, and tick what to include.** The sources on offer are a screenshot of the Agent Chat pane (only while one is open), the **Agent Mode activity log**, the regular Copilot chat log, and the opencode log when opencode is your backend. Anything you tick that turns out to have nothing to collect is listed on the next page with the reason, so you never have to guess whether it was gathered.
 2. **Let Copilot prepare the report.** The review page shows **Preparing report…** until the zip is ready. Copilot briefly hides the dialog to photograph the pane behind it, reads and cleans the logs you asked for, and packs everything into one zip on your own computer — the zip is the only file it writes.
@@ -123,7 +141,7 @@ The zip is uploaded only to Brevilabs. The upload reuses the random device ident
 
 ### What the report ID is for
 
-It is the reference a maintainer looks your report up by. It is not a link, not a password, and there is nothing behind it that anyone reading the issue can open. Because it is just a reference, you can also paste it into Discord when you ask for help there, and it points at the same report.
+It is the reference an upstream Brevilabs maintainer uses to look up the private report. It is not a link or password. A More Agents maintainer does not have access to the upload; provide reviewed local diagnostics for a fork report instead.
 
 ### How long a report is kept
 
@@ -146,7 +164,7 @@ Logs and screenshots can contain prompts, note contents, paths, and tool inputs.
 
 ## What works on mobile?
 
-Agent Chat, including opencode, Claude, Codex, Projects, and Skill execution, is desktop-only. On mobile, use Quick Chat. Agent settings display **Agent settings are available on desktop.** Miyo on mobile requires a remote Miyo connection and manual vault registration in Miyo.
+Agent Chat, including all six backends, Projects, and Skill execution, is desktop-only. Grok, Muse Code, and Antigravity require local CLIs and Node.js 20 or later. On mobile, use Quick Chat. Agent settings display **Agent settings are available on desktop.** Miyo on mobile requires a remote Miyo connection and manual vault registration in Miyo.
 
 ## Related
 

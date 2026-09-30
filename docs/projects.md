@@ -1,8 +1,10 @@
 # Projects
 
+> **More Agents fork:** The running plugin is still named **Copilot** and uses ID `copilot`; UI labels and existing storage paths below are intentional. Install the [complete fork package](companion-backends.md#install-the-fork), not the upstream Community Plugins entry. Copilot/Brevilabs services remain external upstream offerings.
+
 Projects are focused workspaces inside Agent Chat. Each Project keeps its own instructions, reusable context, and chat history, so ongoing work for a client, codebase, course, or research topic stays together.
 
-A Project works with opencode, Claude, or Codex. It uses the agent, model, effort, and permission setting selected for the current chat. It does not lock you to a separate model.
+A Project uses the agent, model, effort, and permission setting selected for the current chat, including the added Grok, Muse Code, and Antigravity backends. It does not lock you to a separate model. Native CLI tool access still follows the backend's own permissions; the project folder is not a sandbox. See [Companion permissions](companion-backends.md#permissions-and-limitations).
 
 On the Agent Chat home screen, open **Projects** to browse your most recently used Projects. Scroll the list to see more, or use **Search projects** to find a Project by name or description. Search includes every Project, even those you have not scrolled to yet.
 
