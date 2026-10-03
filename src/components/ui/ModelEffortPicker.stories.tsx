@@ -41,7 +41,7 @@ export const HighEffort: StoryObj<Props> = {
     },
   },
 };
-export const NoEffortControl: StoryObj<Props> = {
+export const NoEffortControl = {
   args: {
     override: {
       ...ConcreteEffort.args.override,
@@ -50,7 +50,7 @@ export const NoEffortControl: StoryObj<Props> = {
       effortStatusByModelKey: { "example|agent": "unsupported" },
     },
   },
-};
+} satisfies StoryObj<Props>;
 
 export const Unlicensed: StoryObj<Props> = {
   args: {
@@ -107,20 +107,20 @@ export const CustomEndpointLabels: StoryObj<Props> = {
   },
 };
 
-export const LoadingEffort: StoryObj<Props> = {
+export const LoadingEffort = {
   args: {
     override: {
       ...NoEffortControl.args.override,
-      effortStatusByModelKey: { "example|agent": "loading" },
+      effortStatusByModelKey: { "example|agent": "loading" as const },
     },
   },
-};
+} satisfies StoryObj<Props>;
 
-export const EffortDiscoveryFailed: StoryObj<Props> = {
+export const EffortDiscoveryFailed = {
   args: {
     override: {
       ...NoEffortControl.args.override,
-      effortStatusByModelKey: { "example|agent": "error" },
+      effortStatusByModelKey: { "example|agent": "error" as const },
     },
   },
-};
+} satisfies StoryObj<Props>;

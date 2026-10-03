@@ -1139,61 +1139,61 @@ describe("agentModelPickerHelpers", () => {
   });
 
   describe("resolveEffortOptions()", () => {
-  it("prefers the active GPT 6.1 Sol session over a stale empty preload catalog https://github.com/Brevilabs/obsidian-copilot-private/issues/550", () => {
-    const levels = [
-      { value: "high", label: "high" },
-      { value: "ultra", label: "ultra" },
-    ];
-    const manager = makeManager({
-      catalogById: { codex: makeCatalog([makeModelEntry("gpt-6.1-sol")]) },
-    });
-    Object.assign(manager, {
-      getActiveSession: () => ({
-        backendId: "codex",
-        getState: () => ({
-          model: makeModelState("gpt-6.1-sol", [
-            { ...makeModelEntry("gpt-6.1-sol"), effortOptions: levels },
-          ]),
+    it("prefers the active GPT 6.1 Sol session over a stale empty preload catalog https://github.com/Brevilabs/obsidian-copilot-private/issues/550", () => {
+      const levels = [
+        { value: "high", label: "high" },
+        { value: "ultra", label: "ultra" },
+      ];
+      const manager = makeManager({
+        catalogById: { codex: makeCatalog([makeModelEntry("gpt-6.1-sol")]) },
+      });
+      Object.assign(manager, {
+        getActiveSession: () => ({
+          backendId: "codex",
+          getState: () => ({
+            model: makeModelState("gpt-6.1-sol", [
+              { ...makeModelEntry("gpt-6.1-sol"), effortOptions: levels },
+            ]),
+          }),
         }),
-      }),
+      });
+      expect(resolveEffortOptions(manager, "codex", "gpt-6.1-sol")).toEqual(levels);
     });
-    expect(resolveEffortOptions(manager, "codex", "gpt-6.1-sol")).toEqual(levels);
-  });
-  it("uses confirmed empty discovery instead of an outdated nonempty catalog https://github.com/Brevilabs/obsidian-copilot-private/issues/550", () => {
-    const manager = makeManager({
-      catalogById: {
-        codex: makeCatalog([
-          { ...makeModelEntry("plain"), effortOptions: [{ value: "high", label: "high" }] },
-        ]),
-      },
-      effortCatalogById: { codex: { plain: [] } },
-    });
-    expect(resolveEffortOptions(manager, "codex", "plain")).toEqual([]);
-  });
-});
-
-describe("buildEffortStatusByModelKey()", () => {
-  it("distinguishes loading, failed discovery, concrete levels and confirmed unsupported models", () => {
-    const entries = ["loading", "failed", "ready", "plain"].map((id) =>
-      synthesizeAgentEntry(id, id, makeDescriptor("codex"))
-    );
-    const manager = makeManager({
-      preloadStatusById: { codex: "pending" },
-      effortCatalogById: {
-        codex: {
-          ready: [{ value: "high", label: "high" }],
-          plain: [],
+    it("uses confirmed empty discovery instead of an outdated nonempty catalog https://github.com/Brevilabs/obsidian-copilot-private/issues/550", () => {
+      const manager = makeManager({
+        catalogById: {
+          codex: makeCatalog([
+            { ...makeModelEntry("plain"), effortOptions: [{ value: "high", label: "high" }] },
+          ]),
         },
-      },
+        effortCatalogById: { codex: { plain: [] } },
+      });
+      expect(resolveEffortOptions(manager, "codex", "plain")).toEqual([]);
     });
-    const status = buildEffortStatusByModelKey(manager, entries);
-    expect(status[getModelKeyFromModel(entries[0])]).toBe("loading");
-    expect(status[getModelKeyFromModel(entries[2])]).toBe("ready");
-    expect(status[getModelKeyFromModel(entries[3])]).toBe("unsupported");
-    const failed = makeManager({ preloadStatusById: { codex: "ready" } });
-    expect(
-      buildEffortStatusByModelKey(failed, [entries[1]])[getModelKeyFromModel(entries[1])]
-    ).toBe("error");
   });
-});
+
+  describe("buildEffortStatusByModelKey()", () => {
+    it("distinguishes loading, failed discovery, concrete levels and confirmed unsupported models", () => {
+      const entries = ["loading", "failed", "ready", "plain"].map((id) =>
+        synthesizeAgentEntry(id, id, makeDescriptor("codex"))
+      );
+      const manager = makeManager({
+        preloadStatusById: { codex: "pending" },
+        effortCatalogById: {
+          codex: {
+            ready: [{ value: "high", label: "high" }],
+            plain: [],
+          },
+        },
+      });
+      const status = buildEffortStatusByModelKey(manager, entries);
+      expect(status[getModelKeyFromModel(entries[0])]).toBe("loading");
+      expect(status[getModelKeyFromModel(entries[2])]).toBe("ready");
+      expect(status[getModelKeyFromModel(entries[3])]).toBe("unsupported");
+      const failed = makeManager({ preloadStatusById: { codex: "ready" } });
+      expect(
+        buildEffortStatusByModelKey(failed, [entries[1]])[getModelKeyFromModel(entries[1])]
+      ).toBe("error");
+    });
+  });
 });

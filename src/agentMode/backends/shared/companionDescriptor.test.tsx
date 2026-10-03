@@ -118,11 +118,7 @@ describe("companionDescriptor", () => {
           }),
           setConfigOption: jest.fn().mockResolvedValue(undefined),
         } as unknown as Parameters<BackendDescriptor["applySelection"]>[0];
-        await create().applySelection(
-          session,
-          { baseModelId: "gemini", effort: "high" },
-          { backendReportedCurrent: null }
-        );
+        await create().applySelection(session, { baseModelId: "gemini", effort: "high" });
         expect(session.applyModelWireId).toHaveBeenCalledWith("gemini");
         expect(session.setConfigOption).toHaveBeenCalledWith("reasoning_effort", "high");
       });
