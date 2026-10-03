@@ -59,7 +59,7 @@ const makeManager = (): {
     onProgress?: (progress: ManagedInstallProgress) => void;
   }> = [];
   const deferreds: Deferred<{ version: string; path: string }>[] = [];
-  const upgradeManaged = jest.fn().mockResolvedValue({ version: "2.0.3", path: "/managed" });
+  const upgradeManaged = jest.fn().mockResolvedValue({ version: "2.0.22", path: "/managed" });
   const upgradeCustomBinary = jest.fn().mockResolvedValue({ version: "1.16.0", path: "/custom" });
   const setCustomBinaryPath = jest.fn().mockResolvedValue(undefined);
   const uninstall = jest.fn().mockResolvedValue(undefined);
@@ -139,20 +139,22 @@ describe("OpencodeInstallModal", () => {
     setOpencodeSettings(undefined);
   });
 
-  describe("constructor()", () => {
-    it("uses the reusable full-bleed frame for https://github.com/Brevilabs/obsidian-copilot-private/issues/317", () => {
-      const { manager } = makeManager();
-      const modal = new OpencodeInstallModal(new App(), manager, {
-        platform: "darwin",
-        arch: "arm64",
-      });
+  describe("OpencodeInstallModal", () => {
+    describe("constructor()", () => {
+      it("https://github.com/Brevilabs/obsidian-copilot-private/issues/317 uses the reusable full-bleed modal frame", () => {
+        const { manager } = makeManager();
+        const modal = new OpencodeInstallModal(new App(), manager, {
+          platform: "darwin",
+          arch: "arm64",
+        });
 
-      expect(modal.modalEl.className).toBe("modal copilot-modal-full-bleed");
+        expect(modal.modalEl.className).toBe("modal copilot-modal-full-bleed");
+      });
     });
   });
 
   describe("OpencodeConfigContainer()", () => {
-    it("opens on the managed source when nothing was ever configured", () => {
+    it("opens on the managed source with a download action when nothing is configured", () => {
       const { manager } = makeManager();
       renderContainer(manager);
 
@@ -193,7 +195,7 @@ describe("OpencodeInstallModal", () => {
       expect(getSettings().agentMode.backends?.opencode?.binaryPath).toBe(EXISTING_BINARY_PATH);
     });
 
-    it("renders the manager's shared install progress label and percent", async () => {
+    it("shows the manager's install progress and confirms with a notice when the install completes", async () => {
       const { manager, publish, installDeferred } = makeManager();
       renderContainer(manager);
 
@@ -215,7 +217,7 @@ describe("OpencodeInstallModal", () => {
       expect(screen.getByRole("button", { name: "Download & install" })).toBeTruthy();
     });
 
-    it("cancels through the manager so closing the dialog cannot kill the run", async () => {
+    it("cancels through the manager and does not cancel when the dialog unmounts", async () => {
       const { manager, cancelCurrentOperation, publish, installDeferred } = makeManager();
       const { unmount } = renderContainer(manager);
 
@@ -235,7 +237,7 @@ describe("OpencodeInstallModal", () => {
       expect(cancelCurrentOperation).not.toHaveBeenCalled();
     });
 
-    it("surfaces an install failure and keeps the retry available", async () => {
+    it("shows an install failure and keeps the download action available", async () => {
       const { manager, publish, installDeferred } = makeManager();
       renderContainer(manager);
 
@@ -259,12 +261,12 @@ describe("OpencodeInstallModal", () => {
       renderContainer(manager);
 
       await act(async () => {
-        fireEvent.click(screen.getByRole("button", { name: "Upgrade to v2.0.3" }));
+        fireEvent.click(screen.getByRole("button", { name: "Upgrade to v2.0.22" }));
       });
 
       expect(upgradeManaged).toHaveBeenCalledTimes(1);
       expect(upgradeCustomBinary).not.toHaveBeenCalled();
-      expect(noticeMessages()).toContain("opencode upgraded to v2.0.3.");
+      expect(noticeMessages()).toContain("opencode upgraded to v2.0.22.");
     });
     it("drops a failed upgrade's reason once an install has replaced the binary", async () => {
       setOpencodeSettings({
@@ -276,13 +278,13 @@ describe("OpencodeInstallModal", () => {
       upgradeManaged.mockRejectedValue(new Error("tar exited with 1"));
       renderContainer(manager);
       await act(async () => {
-        fireEvent.click(screen.getByRole("button", { name: "Upgrade to v2.0.3" }));
+        fireEvent.click(screen.getByRole("button", { name: "Upgrade to v2.0.22" }));
       });
       expect(screen.getByText("tar exited with 1")).toBeTruthy();
 
       fireEvent.click(screen.getByRole("button", { name: "Reinstall" }));
       await act(async () => {
-        installDeferred().resolve({ version: "2.0.3", path: "/managed" });
+        installDeferred().resolve({ version: "2.0.22", path: "/managed" });
       });
       publish({ kind: "idle" });
 
@@ -301,7 +303,7 @@ describe("OpencodeInstallModal", () => {
 
       fireEvent.click(screen.getByRole("button", { name: "Reinstall" }));
       await act(async () => {
-        fireEvent.click(screen.getByRole("button", { name: "Upgrade to v2.0.3" }));
+        fireEvent.click(screen.getByRole("button", { name: "Upgrade to v2.0.22" }));
       });
 
       expect(screen.getAllByRole("progressbar")).toHaveLength(1);
@@ -319,11 +321,11 @@ describe("OpencodeInstallModal", () => {
       renderContainer(manager);
 
       await act(async () => {
-        fireEvent.click(screen.getByRole("button", { name: "Upgrade to v2.0.3" }));
+        fireEvent.click(screen.getByRole("button", { name: "Upgrade to v2.0.22" }));
       });
 
       expect(screen.queryByText("Aborted")).toBeNull();
-      expect(screen.getByRole("button", { name: "Upgrade to v2.0.3" })).toBeTruthy();
+      expect(screen.getByRole("button", { name: "Upgrade to v2.0.22" })).toBeTruthy();
     });
 
     it("drops a failed upgrade's reason once another binary is applied", async () => {
@@ -336,7 +338,7 @@ describe("OpencodeInstallModal", () => {
       upgradeManaged.mockRejectedValue(new Error("GitHub API rate-limited"));
       renderContainer(manager);
       await act(async () => {
-        fireEvent.click(screen.getByRole("button", { name: "Upgrade to v2.0.3" }));
+        fireEvent.click(screen.getByRole("button", { name: "Upgrade to v2.0.22" }));
       });
       expect(screen.getByText("GitHub API rate-limited")).toBeTruthy();
 

@@ -1,39 +1,21 @@
-import { obsidianDailyReadTool, obsidianRandomReadTool } from "./ObsidianCliDailyTools";
+import { obsidianRandomReadTool } from "./ObsidianCliDailyTools";
 import {
-  runDailyReadCommand,
   runRandomReadCommand,
+  type ObsidianCliProcessResult,
 } from "@/services/obsidianCli/ObsidianCliClient";
+
+jest.mock("@/services/obsidianCli/ObsidianCliClient", () => ({
+  runRandomReadCommand: jest.fn(),
+}));
 
 type InvokableTool = { invoke: (args: Record<string, unknown>) => Promise<string> };
 const asInvokable = (t: unknown): InvokableTool => t as InvokableTool;
 
-jest.mock("@/services/obsidianCli/ObsidianCliClient", () => ({
-  runDailyReadCommand: jest.fn(),
-  runRandomReadCommand: jest.fn(),
-}));
-
-type CliResult = {
-  command: string;
-  args: string[];
-  binary: string;
-  attemptedBinaries: string[];
-  ok: boolean;
-  stdout: string;
-  stderr: string;
-  exitCode: number | null;
-  errorCode: string | number | null;
-  signal: string | null;
-  durationMs: number;
-};
-
-const mockedRunDailyReadCommand = runDailyReadCommand as jest.MockedFunction<
-  typeof runDailyReadCommand
->;
 const mockedRunRandomReadCommand = runRandomReadCommand as jest.MockedFunction<
   typeof runRandomReadCommand
 >;
 
-function buildSuccessResult(command: string, stdout: string): CliResult {
+function buildSuccessResult(command: string, stdout: string): ObsidianCliProcessResult {
   return {
     command,
     args: [command],
@@ -49,7 +31,11 @@ function buildSuccessResult(command: string, stdout: string): CliResult {
   };
 }
 
-function buildFailedResult(command: string, errorCode: string, stderr: string): CliResult {
+function buildFailedResult(
+  command: string,
+  errorCode: string,
+  stderr: string
+): ObsidianCliProcessResult {
   return {
     command,
     args: [command],
@@ -74,61 +60,29 @@ describe("ObsidianCliDailyTools", () => {
     jest.clearAllMocks();
   });
 
-  test("obsidianDailyReadTool returns parsed daily note payload", async () => {
-    mockedRunDailyReadCommand.mockResolvedValue(
-      buildSuccessResult("daily:read", "Today I worked on CLI integration.")
-    );
+  describe("obsidianRandomReadTool", () => {
+    it("returns the random note content with a null vault when none is requested", async () => {
+      mockedRunRandomReadCommand.mockResolvedValue(
+        buildSuccessResult("random:read", "Random note body")
+      );
 
-    const response = await asInvokable(obsidianDailyReadTool).invoke({ vault: "Work" });
-    const parsed = JSON.parse(response) as {
-      type: string;
-      command: string;
-      vault: string | null;
-      content: string;
-    };
+      const response = await asInvokable(obsidianRandomReadTool).invoke({});
 
-    expect(parsed.type).toBe("obsidian_cli_daily_read");
-    expect(parsed.command).toBe("daily:read");
-    expect(parsed.vault).toBe("Work");
-    expect(parsed.content).toBe("Today I worked on CLI integration.");
-    expect(mockedRunDailyReadCommand).toHaveBeenCalledWith("Work");
-  });
+      expect(JSON.parse(response)).toMatchObject({
+        type: "obsidian_cli_random_read",
+        command: "random:read",
+        vault: null,
+        content: "Random note body",
+      });
+      expect(mockedRunRandomReadCommand).toHaveBeenCalledWith(undefined);
+    });
 
-  test("obsidianRandomReadTool returns parsed random note payload", async () => {
-    mockedRunRandomReadCommand.mockResolvedValue(
-      buildSuccessResult("random:read", "Random note body")
-    );
+    it("throws an actionable binary-not-found message when the CLI is missing (ENOENT)", async () => {
+      mockedRunRandomReadCommand.mockResolvedValue(buildFailedResult("random:read", "ENOENT", ""));
 
-    const response = await asInvokable(obsidianRandomReadTool).invoke({});
-    const parsed = JSON.parse(response) as {
-      type: string;
-      command: string;
-      vault: string | null;
-      content: string;
-    };
-
-    expect(parsed.type).toBe("obsidian_cli_random_read");
-    expect(parsed.command).toBe("random:read");
-    expect(parsed.vault).toBeNull();
-    expect(parsed.content).toBe("Random note body");
-    expect(mockedRunRandomReadCommand).toHaveBeenCalledWith(undefined);
-  });
-
-  test("obsidianDailyReadTool throws CLI stderr on failure", async () => {
-    mockedRunDailyReadCommand.mockResolvedValue(
-      buildFailedResult("daily:read", "EFAIL", "daily note unavailable")
-    );
-
-    await expect(asInvokable(obsidianDailyReadTool).invoke({})).rejects.toThrow(
-      "daily note unavailable"
-    );
-  });
-
-  test("obsidianRandomReadTool surfaces actionable ENOENT failure details", async () => {
-    mockedRunRandomReadCommand.mockResolvedValue(buildFailedResult("random:read", "ENOENT", ""));
-
-    await expect(asInvokable(obsidianRandomReadTool).invoke({})).rejects.toThrow(
-      "CLI binary not found"
-    );
+      await expect(asInvokable(obsidianRandomReadTool).invoke({})).rejects.toThrow(
+        "CLI binary not found"
+      );
+    });
   });
 });

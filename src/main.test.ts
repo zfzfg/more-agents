@@ -40,9 +40,8 @@ jest.mock("@/services/webViewerService/webViewerServiceSingleton", () => ({
 jest.mock("@/utils/desktopRuntime", () => ({ isDesktopRuntime: jest.fn(() => false) }));
 jest.mock("@/utils/notificationSound", () => ({ disposeNotificationSound: jest.fn() }));
 jest.mock("@/utils/chatDeepLink", () => ({
-  buildChatDeepLink: jest.fn(),
+  ...jest.requireActual<typeof import("@/utils/chatDeepLink")>("@/utils/chatDeepLink"),
   findChatFileByDeepLinkId: jest.fn(),
-  getSavedChatDeepLinkId: jest.fn(),
 }));
 const mockSkillManagerDispose = jest.fn();
 const mockSkillManagerHasInstance = jest.fn(() => true);
@@ -79,11 +78,7 @@ import { logFileManager } from "@/logFileManager";
 import { flushPersistence } from "@/services/settingsPersistence";
 import { isDesktopRuntime } from "@/utils/desktopRuntime";
 import { disposeNotificationSound } from "@/utils/notificationSound";
-import {
-  buildChatDeepLink,
-  findChatFileByDeepLinkId,
-  getSavedChatDeepLinkId,
-} from "@/utils/chatDeepLink";
+import { findChatFileByDeepLinkId } from "@/utils/chatDeepLink";
 import { Notice, TFile, type WorkspaceLeaf } from "obsidian";
 
 function createPluginUnderTest(calls: string[]) {
@@ -119,38 +114,56 @@ describe("main", () => {
     describe("copyChatLink()", () => {
       beforeEach(() => jest.clearAllMocks());
 
-      it("copies the saved file's frontmatter epoch as a vault-scoped URI", async () => {
+      it("copies a markdown link titled by the chat topic that targets the note's epoch", async () => {
         const plugin = createPluginUnderTest([]);
-        Object.assign(plugin, { app: { vault: { getName: () => "My Vault" } } });
-        jest.mocked(getSavedChatDeepLinkId).mockResolvedValue("epoch:1735732800000");
-        jest.mocked(buildChatDeepLink).mockReturnValue("obsidian://copilot-chat?stable");
+        const frontmatter = { epoch: 1735732800000, topic: "Trip planning" };
+        Object.assign(plugin, {
+          app: {
+            vault: {
+              getName: () => "My Vault",
+              getAbstractFileByPath: (path: string) =>
+                new (TFile as unknown as new (path: string) => TFile)(path),
+            },
+            metadataCache: {
+              getCache: () => ({ frontmatter }),
+              getFileCache: () => ({ frontmatter }),
+            },
+          },
+        });
         const writeText = jest.fn().mockResolvedValue(undefined);
         Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText } });
 
-        await plugin.copyChatLink("Copilot/conversations/renamed.md");
+        await plugin.copyChatLink(async () => "Copilot/conversations/renamed.md");
 
-        expect(getSavedChatDeepLinkId).toHaveBeenCalledWith(
-          plugin.app,
-          "Copilot/conversations/renamed.md"
+        expect(writeText).toHaveBeenCalledWith(
+          "[Trip planning](obsidian://copilot-chat?vault=My+Vault&id=epoch%3A1735732800000)"
         );
-        expect(buildChatDeepLink).toHaveBeenCalledWith("My Vault", "epoch:1735732800000");
-        expect(writeText).toHaveBeenCalledWith("obsidian://copilot-chat?stable");
       });
 
-      it("copies a native agent identity without looking for a Markdown note", async () => {
-        const plugin = createPluginUnderTest([]);
-        Object.assign(plugin, { app: { vault: { getName: () => "My Vault" } } });
-        const nativeId = "copilot-agent-session://codex/abc";
-        jest.mocked(buildChatDeepLink).mockReturnValue("obsidian://copilot-chat?native");
-        const writeText = jest.fn().mockResolvedValue(undefined);
-        Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText } });
+      it.each([
+        ["returns no note", async () => ""],
+        [
+          "throws",
+          async () => {
+            throw new Error("disk full");
+          },
+        ],
+      ])(
+        "reports a failure and copies nothing when saving the chat %s https://github.com/Brevilabs/obsidian-copilot-private/issues/601",
+        async (_, resolveNotePath) => {
+          const plugin = createPluginUnderTest([]);
+          const writeText = jest.fn().mockResolvedValue(undefined);
+          Object.defineProperty(navigator, "clipboard", {
+            configurable: true,
+            value: { writeText },
+          });
 
-        await plugin.copyChatLink(nativeId);
+          await plugin.copyChatLink(resolveNotePath);
 
-        expect(getSavedChatDeepLinkId).not.toHaveBeenCalled();
-        expect(buildChatDeepLink).toHaveBeenCalledWith("My Vault", nativeId);
-        expect(writeText).toHaveBeenCalledWith("obsidian://copilot-chat?native");
-      });
+          expect(writeText).not.toHaveBeenCalled();
+          expect(Notice).toHaveBeenCalledWith("Could not copy chat link.");
+        }
+      );
     });
 
     describe("openChatDeepLink()", () => {
@@ -526,6 +539,7 @@ describe("main", () => {
       it("revokes lifecycle-sensitive mutations before returning (https://github.com/Brevilabs/obsidian-copilot-private/issues/284)", () => {
         const plugin = createPluginUnderTest([]);
         Object.assign(plugin, { pluginLifecycleActive: true });
+        expect(plugin.isPluginLifecycleActive()).toBe(true);
 
         plugin.onunload();
 
@@ -645,15 +659,6 @@ describe("main", () => {
 
         expect(mockSkillManagerDispose).not.toHaveBeenCalled();
         expect(logInfo).toHaveBeenCalledWith("Copilot plugin unloaded");
-      });
-    });
-
-    describe("isPluginLifecycleActive()", () => {
-      it("reports whether this plugin instance owns lifecycle-sensitive mutations", () => {
-        const plugin = createPluginUnderTest([]);
-        Object.assign(plugin, { pluginLifecycleActive: true });
-
-        expect(plugin.isPluginLifecycleActive()).toBe(true);
       });
     });
 

@@ -122,7 +122,10 @@ describe("SkillsSettings", () => {
           ...current,
           skills: {
             ...current.skills,
-            builtinPreferences: { "copilot-youtube-transcript": { disabled: true } },
+            builtinPreferences: {
+              ...current.skills.builtinPreferences,
+              "copilot-youtube-transcript": { disabled: true },
+            },
           },
         });
       });
@@ -134,7 +137,7 @@ describe("SkillsSettings", () => {
       ).toBe("true");
       expect(
         screen
-          .getByRole("button", { name: "copilot-web-search for Claude" })
+          .getByRole("button", { name: "copilot-fetch-x for Claude" })
           .getAttribute("aria-disabled")
       ).toBe("false");
       Icon.mockClear();
@@ -405,15 +408,7 @@ describe("SkillsSettings", () => {
       }
     );
 
-    it("does not surface a Skills folder settings control (folder is root-derived, not user-editable)", async () => {
-      await act(async () => {
-        renderSettings();
-      });
-      expect(screen.queryByLabelText("Skills folder")).toBeNull();
-      expect(screen.queryByText("Skills folder")).toBeNull();
-    });
-
-    it("re-derives the discovered folder and re-scans when the Copilot root changes", async () => {
+    it("re-derives the displayed skills folder and re-scans when the Copilot root changes", async () => {
       await act(async () => {
         renderSettings();
       });

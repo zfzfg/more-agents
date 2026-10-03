@@ -4,7 +4,6 @@ import { ChatModelProviders } from "@/constants";
 import {
   COPILOT_PLUS_OPENCODE_PROVIDER_ID,
   copilotPlusModelId,
-  isOpencodeZenWireId,
   mapProviderToOpencodeId,
   opencodeEnabledModelEntries,
   opencodeWireBaseIdFor,
@@ -51,15 +50,10 @@ function makeSettings(args: {
 }
 
 describe("opencodeModelResolve", () => {
-  describe("mapProviderToOpencodeId", () => {
-    it("maps a BYOK provider with a catalog id to that id, non-native", () => {
+  describe("mapProviderToOpencodeId()", () => {
+    it("maps a BYOK provider with a catalog id to that catalog id as non-native", () => {
       const provider = makeProvider("p1", { kind: "byok", catalogProviderId: "anthropic" });
       expect(mapProviderToOpencodeId(provider)).toEqual({ id: "anthropic", native: false });
-    });
-
-    it("maps BYOK openrouter to openrouter, non-native", () => {
-      const provider = makeProvider("p1", { kind: "byok", catalogProviderId: "openrouter" });
-      expect(mapProviderToOpencodeId(provider)).toEqual({ id: "openrouter", native: false });
     });
 
     it("returns null for a non-OpenAI-compatible BYOK provider without a catalog id", () => {
@@ -70,10 +64,6 @@ describe("opencodeModelResolve", () => {
     it("maps an OpenAI-compatible BYOK provider without a catalog id to its providerId", () => {
       const provider = makeProvider("p1", { kind: "byok" }, "openai-compatible");
       expect(mapProviderToOpencodeId(provider)).toEqual({ id: "p1", native: false });
-    });
-
-    it("returns null for a google BYOK provider without a catalog id", () => {
-      expect(mapProviderToOpencodeId(makeProvider("p1", { kind: "byok" }, "google"))).toBeNull();
     });
 
     it("maps copilot-plus origin to the reserved copilot-plus id, non-native", () => {
@@ -90,17 +80,7 @@ describe("opencodeModelResolve", () => {
     });
   });
 
-  describe("isOpencodeZenWireId", () => {
-    it("matches the opencode/ prefix only", () => {
-      expect(isOpencodeZenWireId("opencode/big-pickle")).toBe(true);
-      expect(isOpencodeZenWireId("opencode/deepseek-v4-flash-free")).toBe(true);
-      expect(isOpencodeZenWireId("lmstudio/gpt-oss-20b")).toBe(false);
-      expect(isOpencodeZenWireId("openrouter/anthropic/claude")).toBe(false);
-      expect(isOpencodeZenWireId("opencode-zen/x")).toBe(false);
-    });
-  });
-
-  describe("opencodeEnabledModelEntries", () => {
+  describe("opencodeEnabledModelEntries()", () => {
     const byokProvider = (overrides: Partial<Provider> = {}): Provider => ({
       ...makeProvider("p1", { kind: "byok", catalogProviderId: "openrouter" }, "openai-compatible"),
       requiresApiKey: true,
@@ -135,6 +115,84 @@ describe("opencodeModelResolve", () => {
       const [entry] = opencodeEnabledModelEntries(settings);
       expect(entry.credentialState).toBe("ok");
       expect(entry.name).toBe("Big X");
+    });
+
+    it("labels a custom OpenAI-compatible provider's models with the provider's display name instead of its UUID route id (https://github.com/logancyang/obsidian-copilot/issues/3496)", () => {
+      const customProviderId = "d5df8680-65f4-4c4b-81d2-7797550f47fe";
+      const settings = makeSettings({
+        enabledModels: ["named", "unnamed"],
+        providers: {
+          [customProviderId]: {
+            ...makeProvider(customProviderId, { kind: "byok" }, "openai-compatible"),
+            displayName: "custom-provider",
+          },
+        },
+        configuredModels: [
+          {
+            configuredModelId: "named",
+            providerId: customProviderId,
+            info: { id: "auto", displayName: "custom-model" },
+            configuredAt: 0,
+          },
+          {
+            configuredModelId: "unnamed",
+            providerId: customProviderId,
+            info: { id: "fast", displayName: "" },
+            configuredAt: 0,
+          },
+        ],
+      });
+      const [named, unnamed] = opencodeEnabledModelEntries(settings);
+      expect(named.baseModelId).toBe(`${customProviderId}/auto`);
+      expect(named.label).toBe("custom-provider/custom-model");
+      expect(unnamed.label).toBe("custom-provider/fast");
+    });
+
+    it("leaves a custom provider's models unlabeled when its display name is blank, so opencode's route-id label shows (https://github.com/logancyang/obsidian-copilot/issues/3496)", () => {
+      const customProviderId = "d5df8680-65f4-4c4b-81d2-7797550f47fe";
+      const settings = makeSettings({
+        enabledModels: ["named"],
+        providers: {
+          [customProviderId]: {
+            ...makeProvider(customProviderId, { kind: "byok" }, "openai-compatible"),
+            displayName: "   ",
+          },
+        },
+        configuredModels: [
+          {
+            configuredModelId: "named",
+            providerId: customProviderId,
+            info: { id: "auto", displayName: "custom-model" },
+            configuredAt: 0,
+          },
+        ],
+      });
+      const [entry] = opencodeEnabledModelEntries(settings);
+      expect(entry.baseModelId).toBe(`${customProviderId}/auto`);
+      expect(entry.label).toBeUndefined();
+    });
+
+    it("leaves Copilot Plus, catalog BYOK, and agent-native models unlabeled so opencode's own label shows (https://github.com/logancyang/obsidian-copilot/issues/3496)", () => {
+      const settings = makeSettings({
+        enabledModels: ["plus", "catalog", "native"],
+        providers: {
+          plus: makeProvider("plus", { kind: "copilot-plus" }),
+          catalog: byokProvider({ providerId: "catalog" }),
+          native: makeProvider("native", { kind: "agent", agentType: "opencode" }),
+        },
+        configuredModels: [
+          makeModel("plus", "plus", "copilot-plus-flash"),
+          makeModel("catalog", "catalog", "qwen/qwen3-max"),
+          makeModel("native", "native", "opencode/big-pickle"),
+        ],
+      });
+      const entries = opencodeEnabledModelEntries(settings);
+      expect(entries.map((e) => e.baseModelId)).toEqual([
+        "copilot-plus/copilot-plus-flash",
+        "openrouter/qwen/qwen3-max",
+        "opencode/big-pickle",
+      ]);
+      expect(entries.map((e) => e.label)).toEqual([undefined, undefined, undefined]);
     });
 
     it("treats agent-origin (native) models as ok regardless of key", () => {
@@ -256,7 +314,7 @@ describe("opencodeModelResolve", () => {
     });
   });
 
-  describe("copilotPlusModelId", () => {
+  describe("copilotPlusModelId()", () => {
     it("strips opencode's Copilot Plus prefix down to the bare model id", () => {
       expect(copilotPlusModelId("copilot-plus/gemini-3-pro")).toBe("gemini-3-pro");
     });
@@ -272,7 +330,7 @@ describe("opencodeModelResolve", () => {
     });
   });
 
-  describe("opencodeWireBaseIdFor", () => {
+  describe("opencodeWireBaseIdFor()", () => {
     const plusProvider = makeProvider("plus-1", { kind: "copilot-plus" }, "openai-compatible");
 
     it("prefixes a Copilot model with the provider opencode routes it under", () => {

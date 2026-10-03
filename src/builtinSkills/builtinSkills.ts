@@ -14,6 +14,7 @@ export interface BuiltinSkill {
   readonly name: string;
   readonly version: number;
   readonly enabledAgents: readonly BackendId[];
+  readonly defaultDisabled?: boolean;
   readonly skillMd: string;
   readonly files: ReadonlyArray<{ readonly path: string; readonly content: string }>;
 }
@@ -162,6 +163,13 @@ function RequireRelay {
   if (-not $KEY -or -not $BASE) { NoLicense }
 }
 
+# Decode a response body as UTF-8 whatever its header says: Windows PowerShell 5.1
+# decodes .Content as ISO-8859-1 when the server names no charset, mojibaking
+# every non-ASCII character. https://github.com/logancyang/obsidian-copilot/issues/3398
+function Read-Utf8Body($resp) {
+  [System.Text.Encoding]::UTF8.GetString($resp.RawContentStream.ToArray())
+}
+
 # Invoke-Relay endpoint body -> prints the response body, mapping HTTP status.
 function Invoke-Relay($endpoint, $body) {
   $json = $body | ConvertTo-Json -Compress -Depth 5
@@ -174,7 +182,7 @@ function Invoke-Relay($endpoint, $body) {
       -Headers @{ Authorization = "Bearer $KEY"; 'X-Client-Version' = $CLIENT_VERSION } \`
       -Body $bytes -UseBasicParsing
     $code = [int]$resp.StatusCode
-    $out = $resp.Content
+    $out = Read-Utf8Body $resp
   } catch {
     # A non-2xx makes Invoke-WebRequest throw; recover the response to map status.
     $r = $null
@@ -262,11 +270,12 @@ function relaySkill(opts: {
   license?: string;
   selfHostMode?: "search" | "deny";
   extraInstructions?: string;
+  defaultDisabled?: boolean;
 }): BuiltinSkill {
   const [argKey, argPlaceholder] = opts.arg;
   const cmdFile = opts.scriptFile.replace(/\.sh$/, ".cmd");
   const ps1File = opts.scriptFile.replace(/\.sh$/, ".ps1");
-  const version = 7;
+  const version = 8;
   // Self-host search crosses back into the Obsidian renderer so API keys never enter the
   // agent process.
   // https://github.com/Brevilabs/obsidian-copilot-private/issues/165
@@ -302,7 +311,7 @@ fi
     if ($_.ErrorDetails.Message) { [Console]::Error.WriteLine($_.ErrorDetails.Message) }
     Die 'Copilot could not complete self-host web search.' 1
   }
-  [Console]::Out.WriteLine($response.Content)
+  [Console]::Out.WriteLine((Read-Utf8Body $response))
   exit 0
 }
 `
@@ -316,6 +325,7 @@ fi
     name: opts.name,
     version,
     enabledAgents: ["claude", "codex", "opencode"],
+    defaultDisabled: opts.defaultDisabled,
     skillMd: `---
 name: ${opts.name}
 description: ${opts.description}
@@ -372,6 +382,7 @@ const WEB_SEARCH = relaySkill({
   scriptFile: "web-search.sh",
   license: "Copilot Plus or Self-Host",
   selfHostMode: "search",
+  defaultDisabled: true,
 });
 
 const WEB_FETCH = relaySkill({
@@ -384,6 +395,7 @@ const WEB_FETCH = relaySkill({
   arg: ["url", "<url-to-fetch>"],
   scriptFile: "web-fetch.sh",
   selfHostMode: "deny",
+  defaultDisabled: true,
   extraInstructions: `## Self-Host mode
 
 Self-Host search providers do not provide a common full-page fetch contract. If
@@ -392,11 +404,12 @@ fetch tool. Use \`copilot-web-search\` when search results can answer the reques
 otherwise tell the user that fetching the page is unavailable.`,
 });
 
-const READ_PDF_VERSION = 7;
+const READ_PDF_VERSION = 8;
 const READ_PDF: BuiltinSkill = {
   name: "copilot-read-pdf",
   version: READ_PDF_VERSION,
   enabledAgents: ["claude", "codex", "opencode"],
+  defaultDisabled: true,
   skillMd: `---
 name: copilot-read-pdf
 description: Extract the full text of a PDF as Markdown using Copilot Plus. Use when the user wants to read, summarize, or quote a PDF file (in the vault or an absolute path). Requires an active Copilot Plus license.
@@ -1100,6 +1113,20 @@ export function planManagedBuiltins(gates: { search: boolean; documents: boolean
     prune: ALL_MANAGED_SKILLS.filter((skill) => !seed.includes(skill)).map((skill) => skill.name),
   };
 }
+
+// Default-off is stored as an opt-out because older releases drop every other record,
+// which would erase opt-ins synced from newer devices:
+// https://github.com/Brevilabs/obsidian-copilot-private/issues/629
+export const DEFAULT_BUILTIN_PREFERENCES: NonNullable<
+  CopilotSettings["agentMode"]["skills"]["builtinPreferences"]
+> = Object.freeze(
+  Object.fromEntries(
+    ALL_MANAGED_SKILLS.filter((skill) => skill.defaultDisabled).map((skill) => [
+      skill.name,
+      Object.freeze({ disabled: true }),
+    ])
+  )
+);
 
 export function isBuiltinSkillEnabledFor(
   settings: CopilotSettings,

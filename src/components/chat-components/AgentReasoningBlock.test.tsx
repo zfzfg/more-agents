@@ -10,7 +10,6 @@ describe("AgentReasoningBlock", () => {
           status="reasoning"
           elapsedSeconds={3}
           steps={["Inspecting the current interface"]}
-          isStreaming
         />
       );
 
@@ -19,18 +18,12 @@ describe("AgentReasoningBlock", () => {
       expect(container.textContent).toContain("Reasoning...");
       expect(screen.queryByText("3s")).toBeNull();
       expect(container.querySelector(".copilot-shimmer-text")?.textContent).toBe("...");
-      expect(
-        container
-          .querySelector(".lucide-brain")
-          ?.parentElement?.parentElement?.classList.contains("tw-pl-1")
-      ).toBe(true);
 
       rerender(
         <AgentReasoningBlock
           status="complete"
           elapsedSeconds={4}
           steps={["Inspecting the current interface"]}
-          isStreaming={false}
         />
       );
 

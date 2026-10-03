@@ -1,5 +1,4 @@
 import { isOpencodeZenWireId } from "@/utils/opencodeModelId";
-export { isOpencodeZenWireId, OPENCODE_ZEN_PROVIDER_ID } from "@/utils/opencodeModelId";
 import type { CopilotSettings } from "@/settings/model";
 import type { ConfiguredModel, Provider } from "@/modelManagement";
 import {
@@ -89,9 +88,16 @@ export function opencodeEnabledModelEntries(
     if (!mapping) continue;
     const baseModelId = opencodeWireBaseId(provider, configuredModel);
     if (!baseModelId) continue;
+    const name = configuredModel.info.displayName || configuredModel.info.id;
+    // opencode labels models by provider id, which is a UUID for custom endpoints;
+    // a blank provider name would read worse than that UUID, so it keeps opencode's label.
+    // https://github.com/logancyang/obsidian-copilot/issues/3496
+    const isCustomEndpoint = provider.origin.kind === "byok" && !provider.origin.catalogProviderId;
+    const providerName = provider.displayName.trim();
     out.push({
       baseModelId,
-      name: configuredModel.info.displayName || configuredModel.info.id,
+      name,
+      label: isCustomEndpoint && providerName ? `${providerName}/${name}` : undefined,
       description: configuredModel.info.description,
       credentialState: credentialStateFor(provider, mapping.native),
       isFree: isOpencodeZenWireId(baseModelId),

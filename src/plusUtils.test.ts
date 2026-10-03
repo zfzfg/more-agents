@@ -68,11 +68,12 @@ import {
   applyEntitlement,
   applyLicenseSettings,
   isUsingLicensedModels,
-  canUseMultiAgent,
   checkIsPaidUser,
+  ensureMultiAgentEntitlement,
   isPlusEnabled,
   isSelfHostModeValid,
   markPaidPendingEntitlement,
+  navigateToPlusPage,
   turnOffPaid,
   useIsSelfHostEligible,
   useLicenseState,
@@ -156,6 +157,24 @@ describe("plusUtils", () => {
     settingsListeners.clear();
     mockGetSettings.mockReturnValue(buildSettings({ entitlementToken: "" }));
     await verifyCachedEntitlement();
+  });
+
+  describe("navigateToPlusPage()", () => {
+    afterEach(() => jest.restoreAllMocks());
+
+    it.each(["settings", "multi_agent", "chat_mode_select", "expired_modal"] as const)(
+      "opens pricing with the %s placement and shared source — https://github.com/Brevilabs/obsidian-copilot-private/issues/640",
+      (medium) => {
+        const open = jest.spyOn(window, "open").mockImplementation(() => null);
+
+        navigateToPlusPage(medium);
+
+        expect(open).toHaveBeenCalledWith(
+          `https://www.obsidiancopilot.com/pricing?utm_source=obsidian_copilot&utm_medium=${medium}`,
+          "_blank"
+        );
+      }
+    );
   });
 
   describe("applyLicenseSettings()", () => {
@@ -494,33 +513,33 @@ describe("plusUtils", () => {
     });
   });
 
-  describe("canUseMultiAgent()", () => {
+  describe("isPlusEnabled()", () => {
     it("returns false for a free user", () => {
       mockGetSettings.mockReturnValue(buildSettings({ isPlusUser: false }));
-      expect(canUseMultiAgent()).toBe(false);
+      expect(isPlusEnabled()).toBe(false);
     });
 
     it("returns false for a Lite user (paid but below Plus)", () => {
       mockGetSettings.mockReturnValue(buildSettings({ isPaidUser: true, isPlusUser: false }));
-      expect(canUseMultiAgent()).toBe(false);
+      expect(isPlusEnabled()).toBe(false);
     });
 
     it("returns false once the signed exp has passed (offline lock)", async () => {
       await verifySessionFeatures(["multi_agent"], PAST_EXP_SECONDS);
       mockGetSettings.mockReturnValue(tokenBackedSettings({ isPlusUser: true }));
-      expect(canUseMultiAgent()).toBe(false);
+      expect(isPlusEnabled()).toBe(false);
     });
 
     it("blocks token-derived Plus that was not verified this session (edited data.json)", () => {
       mockGetSettings.mockReturnValue(tokenBackedSettings({ isPlusUser: true }));
-      expect(canUseMultiAgent()).toBe(false);
+      expect(isPlusEnabled()).toBe(false);
     });
 
     it("allows token-derived Plus once the signed token is verified this session", async () => {
       await verifySessionFeatures(["multi_agent"]);
       mockGetSettings.mockReturnValue(tokenBackedSettings({ isPlusUser: true }));
 
-      expect(canUseMultiAgent()).toBe(true);
+      expect(isPlusEnabled()).toBe(true);
     });
 
     it("is not granted by self-host mode alone", async () => {
@@ -529,7 +548,48 @@ describe("plusUtils", () => {
         tokenBackedSettings({ enableSelfHostMode: true, isPlusUser: false })
       );
 
-      expect(canUseMultiAgent()).toBe(false);
+      expect(isPlusEnabled()).toBe(false);
+    });
+  });
+
+  describe("ensureMultiAgentEntitlement()", () => {
+    function revalidatesAs(flags: { isPaidUser: boolean; isPlusUser: boolean }): void {
+      mockValidateLicenseKey.mockImplementation(async () => {
+        mockGetSettings.mockReturnValue(buildSettings(flags));
+        return { isValid: flags.isPaidUser };
+      });
+    }
+
+    it("allows a cached Plus user without any network call", async () => {
+      mockGetSettings.mockReturnValue(buildSettings({ isPaidUser: true, isPlusUser: true }));
+
+      await expect(ensureMultiAgentEntitlement()).resolves.toBe(true);
+      expect(mockValidateLicenseKey).not.toHaveBeenCalled();
+    });
+
+    it("allows a stale non-Plus cache that the backend confirms as Plus, revalidating with the given app", async () => {
+      mockGetSettings.mockReturnValue(buildSettings({ isPaidUser: false, isPlusUser: false }));
+      revalidatesAs({ isPaidUser: true, isPlusUser: true });
+      const app = {} as never;
+
+      await expect(ensureMultiAgentEntitlement(app)).resolves.toBe(true);
+      expect(mockValidateLicenseKey).toHaveBeenCalledTimes(1);
+      expect(mockValidateLicenseKey).toHaveBeenCalledWith(app, { trigger: "multi_agent_per_turn" });
+    });
+
+    it("blocks a Lite user who is paid but below Plus", async () => {
+      mockGetSettings.mockReturnValue(buildSettings({ isPaidUser: false, isPlusUser: false }));
+      revalidatesAs({ isPaidUser: true, isPlusUser: false });
+
+      await expect(ensureMultiAgentEntitlement()).resolves.toBe(false);
+    });
+
+    it("blocks a free user whose license the backend rejects", async () => {
+      mockGetSettings.mockReturnValue(buildSettings({ isPaidUser: false, isPlusUser: false }));
+      mockValidateLicenseKey.mockResolvedValue({ isValid: false });
+
+      await expect(ensureMultiAgentEntitlement()).resolves.toBe(false);
+      expect(mockValidateLicenseKey).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -623,7 +683,7 @@ describe("plusUtils", () => {
         tokenBackedSettings({ plusLicenseKey: "a-different-key", enableSelfHostMode: true })
       );
       expect(isSelfHostModeValid()).toBe(false);
-      expect(canUseMultiAgent()).toBe(false);
+      expect(isPlusEnabled()).toBe(false);
     });
 
     it("does NOT change settings when the token cannot be verified", async () => {
@@ -640,7 +700,7 @@ describe("plusUtils", () => {
       mockGetSettings.mockReturnValue(tokenBackedSettings({ enableSelfHostMode: true }));
 
       expect(isSelfHostModeValid()).toBe(true);
-      expect(canUseMultiAgent()).toBe(true);
+      expect(isPlusEnabled()).toBe(true);
     });
 
     it("does not clobber a fresher token applied while its verification was in flight", async () => {
@@ -672,7 +732,7 @@ describe("plusUtils", () => {
       await verifyCachedEntitlement();
 
       expect(isSelfHostModeValid()).toBe(true);
-      expect(canUseMultiAgent()).toBe(true);
+      expect(isPlusEnabled()).toBe(true);
     });
 
     it("closes every gate when the same cached token stops verifying", async () => {
@@ -685,7 +745,7 @@ describe("plusUtils", () => {
       await verifyCachedEntitlement();
 
       expect(isSelfHostModeValid()).toBe(false);
-      expect(canUseMultiAgent()).toBe(false);
+      expect(isPlusEnabled()).toBe(false);
     });
   });
 

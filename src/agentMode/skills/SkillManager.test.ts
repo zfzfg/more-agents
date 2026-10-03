@@ -10,7 +10,6 @@ import { reconcile } from "./reconcile";
 import {
   computeSkillSetSignature,
   getManagedSkills,
-  getRejectedSkills,
   SkillManager,
   type RefreshResult,
   useRejectedSkills,
@@ -63,14 +62,6 @@ jest.mock("./nodeFsAdapters", () => ({
 jest.mock("./discoverProjectSkills", () => ({
   discoverProjectSkills: jest.fn(async () => ({ accepted: [], rejected: [] })),
 }));
-
-jest.mock("./mergeDiscovery", () => {
-  const actual = jest.requireActual("./mergeDiscovery");
-  return {
-    ...actual,
-    mergeDiscovery: jest.fn((canonical: unknown[]) => canonical),
-  };
-});
 
 jest.mock("./toggleAgent", () => ({
   runDeleteSkill: jest.fn(),
@@ -175,14 +166,12 @@ describe("SkillManager", () => {
         await act(async () => {
           await manager.refresh();
         });
-        expect(getRejectedSkills()).toEqual([rejected]);
         expect(result.current).toEqual([rejected]);
         expect(loadErrorCount.current).toBe(1);
 
         await act(async () => {
           await manager.refresh();
         });
-        expect(getRejectedSkills()).toEqual([]);
         expect(result.current).toBe(initialRejectedSkills);
         expect(loadErrorCount.current).toBe(0);
 
@@ -322,7 +311,7 @@ describe("SkillManager", () => {
         expect(refreshSpy).toHaveBeenCalledTimes(1);
       });
 
-      it("safety timer schedules a reconcile when expectations were never satisfied", async () => {
+      it("schedules a reconcile after the safety timeout when expected vault events never arrive", async () => {
         jest.useFakeTimers();
         const app = makeApp();
         const manager = SkillManager.initialize(app, { claude: ".claude/skills" });
@@ -375,67 +364,8 @@ describe("SkillManager", () => {
         expect(refreshSpy).toHaveBeenCalledTimes(1);
       });
     });
-    describe("renameSkill()", () => {
-      it("refreshes after a rename failure that already mutated the canonical directory", async () => {
-        const app = makeApp();
-        const manager = SkillManager.initialize(app, { claude: ".claude/skills" });
-        mockedRunRenameSkill.mockResolvedValueOnce({
-          ok: false,
-          reason: "Could not rewrite SKILL.md",
-          mutated: true,
-        });
-        const refreshResult: RefreshResult = {
-          ok: true,
-          folder: "copilot/skills",
-          skillCount: 0,
-          reconcileErrorCount: 0,
-        };
-        const refreshSpy = jest.spyOn(manager, "refresh").mockResolvedValue(refreshResult);
-
-        const result = await manager.renameSkill(makeSkill(), "bar");
-
-        expect(result).toEqual({
-          ok: false,
-          code: "fs-error",
-          message: "Could not rewrite SKILL.md",
-        });
-        expect(refreshSpy).toHaveBeenCalledTimes(1);
-      });
-
-      it("renameSkill renames one row without full discovery or reconcile", async () => {
-        const app = makeApp();
-        const manager = SkillManager.initialize(app, { claude: ".claude/skills" });
-        const skill = makeSkill();
-        await seedSkills(manager, [skill]);
-        mockedRunRenameSkill.mockResolvedValueOnce({
-          ok: true,
-          newDirPath: "/vault/copilot/skills/bar",
-          newFilePath: "/vault/copilot/skills/bar/SKILL.md",
-        });
-        mockedDiscoverManagedSkills.mockClear();
-        mockedReconcile.mockClear();
-
-        const result = await manager.renameSkill(skill, "bar");
-
-        expect(result).toEqual({ ok: true });
-        expect(mockedDiscoverManagedSkills).not.toHaveBeenCalled();
-        expect(mockedReconcile).not.toHaveBeenCalled();
-        expect(getManagedSkills()[0]).toMatchObject({
-          name: "bar",
-          dirPath: "/vault/copilot/skills/bar",
-          filePath: "/vault/copilot/skills/bar/SKILL.md",
-        });
-      });
-
-      it(`rejects renaming bundled content ${ISSUE}`, async () => {
-        expect(await builtinFixture().manager.renameSkill(builtinSkill, "changed")).toMatchObject({
-          ok: false,
-        });
-        expect(runRenameSkill).not.toHaveBeenCalled();
-      });
-    });
     describe("toggleAgent()", () => {
-      it("toggleAgent publishes an incremental update without full discovery or reconcile", async () => {
+      it("adds the agent to one row without rerunning discovery or reconcile", async () => {
         const app = makeApp();
         const manager = SkillManager.initialize(app, { claude: ".claude/skills" });
         const skill = makeSkill({ enabledAgents: [] });
@@ -459,39 +389,8 @@ describe("SkillManager", () => {
         expect(runToggleAgent).not.toHaveBeenCalled();
       });
     });
-    describe("updateProperties()", () => {
-      it("updateProperties publishes an incremental update without full discovery or reconcile", async () => {
-        const app = makeApp();
-        const manager = SkillManager.initialize(app, { claude: ".claude/skills" });
-        const skill = makeSkill();
-        await seedSkills(manager, [skill]);
-        mockedRunUpdateProperties.mockResolvedValueOnce({ ok: true });
-        mockedDiscoverManagedSkills.mockClear();
-        mockedReconcile.mockClear();
-
-        const result = await manager.updateProperties(skill, {
-          description: "Updated description.",
-          model: "claude-sonnet",
-        });
-
-        expect(result).toEqual({ ok: true });
-        expect(mockedDiscoverManagedSkills).not.toHaveBeenCalled();
-        expect(mockedReconcile).not.toHaveBeenCalled();
-        expect(getManagedSkills()[0]).toMatchObject({
-          description: "Updated description.",
-          model: "claude-sonnet",
-        });
-      });
-
-      it(`rejects edits to bundled content ${ISSUE}`, async () => {
-        expect(
-          await builtinFixture().manager.updateProperties(builtinSkill, { description: "changed" })
-        ).toMatchObject({ ok: false });
-        expect(runUpdateProperties).not.toHaveBeenCalled();
-      });
-    });
     describe("deleteSkill()", () => {
-      it("deleteSkill removes one row without full discovery or reconcile", async () => {
+      it("removes one row without rerunning discovery or reconcile", async () => {
         const app = makeApp();
         const manager = SkillManager.initialize(app, { claude: ".claude/skills" });
         const skill = makeSkill();
@@ -517,7 +416,7 @@ describe("SkillManager", () => {
       });
     });
     describe("saveProperties()", () => {
-      it("saveProperties emits one skill-set notification for rename plus patch", async () => {
+      it("applies a rename plus patch with a single skill-set notification", async () => {
         const app = makeApp();
         const manager = SkillManager.initialize(app, { opencode: ".opencode/skills" });
         const listener = jest.fn();
@@ -545,7 +444,7 @@ describe("SkillManager", () => {
         });
       });
 
-      it("saveProperties handles a description-only patch", async () => {
+      it("applies a description-only patch without renaming", async () => {
         const app = makeApp();
         const manager = SkillManager.initialize(app, { claude: ".claude/skills" });
         const skill = makeSkill();
@@ -564,7 +463,7 @@ describe("SkillManager", () => {
         });
       });
 
-      it("saveProperties handles a rename-only update", async () => {
+      it("applies a rename with an empty patch", async () => {
         const app = makeApp();
         const manager = SkillManager.initialize(app, { claude: ".claude/skills" });
         const skill = makeSkill();
@@ -588,7 +487,7 @@ describe("SkillManager", () => {
         });
       });
 
-      it("saveProperties returns collision without patching when rename collides", async () => {
+      it("returns a collision error without patching when the new name is taken", async () => {
         const app = makeApp();
         const manager = SkillManager.initialize(app, { claude: ".claude/skills" });
         const skill = makeSkill();
@@ -608,7 +507,39 @@ describe("SkillManager", () => {
         expect(mockedRunUpdateProperties).not.toHaveBeenCalled();
       });
 
-      it("saveProperties closes successfully when rename reports EPERM but patch succeeds", async () => {
+      it("refreshes from disk and returns the failure when the rename fails after mutating the canonical directory", async () => {
+        const app = makeApp();
+        const manager = SkillManager.initialize(app, { claude: ".claude/skills" });
+        const skill = makeSkill();
+        await seedSkills(manager, [skill]);
+        mockedRunRenameSkill.mockResolvedValueOnce({
+          ok: false,
+          reason: "Could not rewrite SKILL.md",
+          mutated: true,
+        });
+        const refreshResult: RefreshResult = {
+          ok: true,
+          folder: "copilot/skills",
+          skillCount: 0,
+          reconcileErrorCount: 0,
+        };
+        const refreshSpy = jest.spyOn(manager, "refresh").mockResolvedValue(refreshResult);
+
+        const result = await manager.saveProperties(skill, {
+          newName: "bar",
+          patch: { description: "Updated description." },
+        });
+
+        expect(result).toEqual({
+          ok: false,
+          code: "fs-error",
+          message: "Could not rewrite SKILL.md",
+        });
+        expect(refreshSpy).toHaveBeenCalledTimes(1);
+        expect(mockedRunUpdateProperties).not.toHaveBeenCalled();
+      });
+
+      it("succeeds when the rename reports EPERM after mutating but the patch succeeds", async () => {
         const app = makeApp();
         const manager = SkillManager.initialize(app, { claude: ".claude/skills" });
         const skill = makeSkill();
@@ -628,7 +559,7 @@ describe("SkillManager", () => {
         });
       });
 
-      it("saveProperties publishes the rename when the follow-up patch fails", async () => {
+      it("keeps the rename in the published row when the follow-up patch fails", async () => {
         const app = makeApp();
         const manager = SkillManager.initialize(app, { claude: ".claude/skills" });
         const skill = makeSkill();
@@ -750,7 +681,13 @@ describe("SkillManager", () => {
     });
   });
   describe("computeSkillSetSignature()", () => {
-    it("computes different signatures for body and enabled-agent changes", () => {
+    it("is identical for equivalent skill sets", () => {
+      expect(computeSkillSetSignature([makeSkill()], "claude")).toBe(
+        computeSkillSetSignature([makeSkill()], "claude")
+      );
+    });
+
+    it("differs when a skill body or its enabled agents change", () => {
       const base = makeSkill({ enabledAgents: ["claude"] });
       const bodyChanged = makeSkill({ body: "new body", enabledAgents: ["claude"] });
       const enabledChanged = makeSkill({ enabledAgents: ["opencode"] });

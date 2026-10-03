@@ -117,7 +117,7 @@ function claudeCompatibilityInput(
   };
 }
 
-export function resolveClaudeCliPath(settings: CopilotSettings): string | null {
+function resolveClaudeCliPath(settings: CopilotSettings): string | null {
   return resolveClaudeBinary({
     override: settings.agentMode?.claudeCli?.path,
     ...claudeResolverEnv(),
@@ -258,14 +258,8 @@ export const ClaudeBackendDescriptor: ClaudeDescriptor = {
     return isClaudePlanModePlanFilePath(absolutePath);
   },
 
-  async applySelection(
-    session: ModelSelectionSession,
-    selection: ModelSelection,
-    context
-  ): Promise<void> {
-    const currentBase = context
-      ? context.backendReportedCurrent?.baseModelId
-      : session.getState()?.model?.current.baseModelId;
+  async applySelection(session: ModelSelectionSession, selection: ModelSelection): Promise<void> {
+    const currentBase = session.getState()?.model?.current.baseModelId;
     if (currentBase !== selection.baseModelId) {
       await session.applyModelWireId(claudeWire.encode(selection));
     }
